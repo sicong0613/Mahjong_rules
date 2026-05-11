@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="国标麻将（含村规）番种速查与计番工具">
+  <title>麻将番种速查</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header id="site-header">
+    <div class="header-inner">
+      <h1>麻将番种速查</h1>
+      <input type="search" id="search-input" placeholder="搜索番种…" autocomplete="off" spellcheck="false">
+      <button id="calc-toggle" class="btn-outline" title="切换计番模式">计番</button>
+    </div>
+  </header>
+
+  <div id="filter-bar">
+    <div class="filter-row" id="fan-filter-row">
+      <span class="filter-label">番数</span>
+      <div class="chip-group" id="fan-chips"></div>
+    </div>
+    <div class="filter-row" id="tag-filter-row">
+      <span class="filter-label">标签</span>
+      <div class="chip-group" id="tag-chips"></div>
+    </div>
+    <div class="filter-row filter-actions">
+      <button id="dlc-toggle" class="btn-outline btn-sm">显示 DLC</button>
+      <button id="clear-filters" class="btn-ghost btn-sm">清除筛选</button>
+    </div>
+  </div>
+
+  <div id="results-summary"></div>
+
+  <main id="fan-list"></main>
+
+  <div id="calc-bar" class="hidden">
+    <div class="calc-bar-inner">
+      <span>已选 <strong id="calc-count">0</strong> 种</span>
+      <span class="calc-sep">｜</span>
+      <span>合计 <strong id="calc-total">0</strong> 番</span>
+      <button id="calc-clear" class="btn-ghost btn-sm">清除</button>
+      <button id="calc-close" class="btn-outline btn-sm">退出</button>
+    </div>
+  </div>
+
+  <script src="data/fans.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
