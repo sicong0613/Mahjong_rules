@@ -85,6 +85,7 @@ input  { font-family: inherit; }
   -webkit-overflow-scrolling: touch;
 }
 .filter-row::-webkit-scrollbar { display: none; }
+.filter-row::-webkit-scrollbar { display: none; }
 .filter-label {
   font-size: .7rem; color: var(--text-muted);
   white-space: nowrap; flex-shrink: 0;
