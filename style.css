@@ -25,7 +25,7 @@
   --radius: 10px;
   --shadow: 0 1px 4px rgba(0,0,0,.10);
   --header-h: 56px;
-  --filter-h: 96px;
+  --filter-h: 108px;
 }
 
 /* ── 基础重置 ────────────────────────────────────────── */
@@ -54,7 +54,7 @@ input  { font-family: inherit; }
 }
 .header-inner {
   display: flex; align-items: center; gap: 10px;
-  height: 100%; padding: 0 14px; max-width: 960px; margin: auto;
+  height: 100%; padding: 0 20px;
 }
 #site-header h1 {
   font-size: 1.05rem; font-weight: 700;
@@ -118,7 +118,6 @@ input  { font-family: inherit; }
 
 /* ── 主内容区 ────────────────────────────────────────── */
 #fan-list {
-  max-width: 960px; margin: 0 auto;
   padding: 4px 10px 20px;
 }
 
@@ -254,6 +253,104 @@ input  { font-family: inherit; }
   font-size: .76rem; color: #5a4a20; line-height: 1.5;
 }
 
+/* ── 牌型展示 ────────────────────────────────────────── */
+.tile-primary {
+  margin: 8px 0 2px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding: 2px 1px;
+  text-align: center;
+}
+.tile-primary::-webkit-scrollbar { display: none; }
+
+.tile-row {
+  display: inline-flex; flex-wrap: nowrap; align-items: flex-end;
+  gap: 1px; vertical-align: bottom; text-align: left;
+}
+
+.tile-example > .tile-row {
+  display: flex;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding: 2px 1px;
+}
+.tile-example > .tile-row::-webkit-scrollbar { display: none; }
+.tile {
+  width: 28px; height: 37px;
+  border-radius: 3px;
+  object-fit: contain;
+  display: block; flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.55);
+}
+.tile-text {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 37px;
+  background: #fffdf0; border: 1px solid #d4b96a;
+  border-radius: 4px;
+  font-size: .65rem; color: #5a4a20; line-height: 1.2;
+  flex-shrink: 0;
+  writing-mode: vertical-rl; text-orientation: mixed;
+}
+.tile-sep { width: 7px; flex-shrink: 0; }
+
+/* 横置牌（副露捡牌） */
+.tile-rotated-wrap {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 37px; height: 28px;
+  flex-shrink: 0;
+}
+.tile-rotated-wrap .tile {
+  transform: rotate(90deg);
+}
+
+/* 牌河 */
+.tile-river-wrap {
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+.tile-river-label {
+  font-size: .68rem; font-weight: 600; white-space: nowrap;
+  color: #b71c1c; background: #ffebee;
+  border: 1px solid #ffcdd2; border-radius: 4px;
+  padding: 1px 6px; display: inline-block;
+  margin-bottom: 3px;
+}
+.tile-river {
+  display: grid;
+  grid-template-columns: repeat(10, auto);
+  gap: 1px;
+  padding: 2px 1px;
+  width: fit-content;
+}
+.tile-river-mark {
+  box-shadow: 0 0 0 2px #b71c1c;
+}
+
+/* 听牌候选 */
+.tile-wait-row {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 3px; margin-top: 5px; padding: 2px 1px;
+}
+.tile-wait-label {
+  font-size: .68rem; font-weight: 600; white-space: nowrap;
+  color: #2e7d32; background: #e8f5e9;
+  border: 1px solid #c8e6c9; border-radius: 4px;
+  padding: 1px 6px; flex-shrink: 0; align-self: flex-start;
+}
+.tile-wait-mark {
+  box-shadow: 0 0 0 2px #2e7d32;
+}
+
+.tile-examples { margin: 8px 0 4px; }
+.tile-example { margin-bottom: 10px; }
+.tile-example-label {
+  font-size: .68rem; color: var(--text-muted); margin-bottom: 3px;
+}
+.card-tips {
+  margin: 6px 0; padding: 6px 10px;
+  background: #e3f2fd; border-left: 3px solid #1565c0;
+  border-radius: 0 4px 4px 0;
+  font-size: .76rem; color: #1a3a5c; line-height: 1.55;
+}
+
 /* ── 计番模式 ────────────────────────────────────────── */
 .calc-check-wrap {
   display: none; margin-top: 10px; padding-top: 8px;
@@ -279,7 +376,7 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 }
 .calc-bar-inner {
   display: flex; align-items: center; gap: 10px;
-  max-width: 960px; margin: auto;
+  padding: 0 20px;
   font-size: .88rem;
 }
 .calc-sep { opacity: .4; }
@@ -398,18 +495,36 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 /* ── 辅助类 ─────────────────────────────────────────── */
 .hidden { display: none !important; }
 
+/* ── 响应式：手机小屏 ───────────────────────────────── */
+@media (max-width: 480px) {
+  .tile, .tile-text { width: 20px; height: 27px; }
+  .tile-text { font-size: .55rem; }
+  .tile-rotated-wrap { width: 27px; height: 20px; }
+}
+@media (min-width: 481px) and (max-width: 639px) {
+  .tile, .tile-text { width: 24px; height: 32px; }
+  .tile-rotated-wrap { width: 32px; height: 24px; }
+}
+
 /* ── 响应式：桌面 ────────────────────────────────────── */
 @media (min-width: 640px) {
   :root { --filter-h: 72px; }
-  #filter-bar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .filter-row { flex-shrink: 0; }
-  .filter-actions { margin-left: auto; flex-shrink: 0; }
+  #filter-bar {
+    display: grid;
+    grid-template-areas: "fan fan" "tag actions";
+    grid-template-columns: 1fr auto;
+    padding: 5px 14px 6px;
+    gap: 3px 10px;
+  }
+  #fan-filter-row { grid-area: fan; }
+  #tag-filter-row  { grid-area: tag; }
+  .filter-actions  { grid-area: actions; align-self: center; margin-top: 0; }
   .fan-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 }
 
 @media (min-width: 900px) {
   body { padding-left: 16px; padding-right: 16px; }
-  :root { --filter-h: 52px; }
+  .fan-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ── 滚动锚点偏移（跳转定位用）────────────────────────── */
