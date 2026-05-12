@@ -1,0 +1,43 @@
+name: Build WASM
+
+on:
+  push:
+    paths:
+      - 'wasm-src/**'
+    branches:
+      - main
+  workflow_dispatch:  # 允许手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk:3.1.64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile fan_calculator.wasm
+        working-directory: wasm-src
+        run: |
+          emcc fan_calculator.cpp embind_wrapper.cpp \
+            -I . -O2 --bind \
+            -s MODULARIZE=1 \
+            -s EXPORT_NAME=MahjongCalculator \
+            -s ENVIRONMENT=web \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -o ../data/fan_calculator.js
+
+      - name: Commit compiled output
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/fan_calculator.js data/fan_calculator.wasm
+          git diff --cached --quiet && echo "No changes to commit" || \
+            (git commit -m "build: recompile fan_calculator.wasm" && git push)
