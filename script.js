@@ -179,6 +179,21 @@ const TILE_LABELS = {
   'X':'牌背','front':'牌面',
 };
 
+function makeTileImg(code) {
+  const img = document.createElement('img');
+  img.className = 'tile';
+  img.src = `img/tiles/${code}.svg`;
+  img.alt = TILE_LABELS[code] || code;
+  img.title = TILE_LABELS[code] || code;
+  img.onerror = function() {
+    const span = document.createElement('span');
+    span.className = 'tile tile-text';
+    span.textContent = TILE_LABELS[code] || code;
+    this.replaceWith(span);
+  };
+  return img;
+}
+
 function renderTiles(notation) {
   const row = document.createElement('div');
   row.className = 'tile-row';
@@ -189,20 +204,23 @@ function renderTiles(notation) {
       row.appendChild(sep);
       return;
     }
-    const img = document.createElement('img');
-    img.className = 'tile';
-    img.src = `img/tiles/${tok}.svg`;
-    img.alt = TILE_LABELS[tok] || tok;
-    img.title = TILE_LABELS[tok] || tok;
-    img.onerror = function() {
-      const span = document.createElement('span');
-      span.className = 'tile tile-text';
-      span.textContent = TILE_LABELS[tok] || tok;
-      this.replaceWith(span);
-    };
-    row.appendChild(img);
+    if (tok.startsWith('>')) {
+      const wrap = document.createElement('span');
+      wrap.className = 'tile-rotated-wrap';
+      wrap.appendChild(makeTileImg(tok.slice(1)));
+      row.appendChild(wrap);
+      return;
+    }
+    row.appendChild(makeTileImg(tok));
   });
   return row;
+}
+
+function renderRiver(notation) {
+  const grid = document.createElement('div');
+  grid.className = 'tile-river';
+  notation.trim().split(/\s+/).forEach(tok => grid.appendChild(makeTileImg(tok)));
+  return grid;
 }
 
 /* ── 桌面端双列同步展开 ──────────────────────────────── */
@@ -278,7 +296,7 @@ function buildCard(f) {
 
   if (f.examples?.length) {
     const wrap = card.querySelector('.tile-examples');
-    f.examples.forEach(({ label, tiles }) => {
+    f.examples.forEach(({ label, tiles, river }) => {
       const item = document.createElement('div');
       item.className = 'tile-example';
       if (label) {
@@ -287,7 +305,8 @@ function buildCard(f) {
         lbl.textContent = label;
         item.appendChild(lbl);
       }
-      item.appendChild(renderTiles(tiles));
+      if (river) item.appendChild(renderRiver(river));
+      if (tiles) item.appendChild(renderTiles(tiles));
       wrap.appendChild(item);
     });
   }

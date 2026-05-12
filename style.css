@@ -290,8 +290,30 @@ input  { font-family: inherit; }
   writing-mode: vertical-rl; text-orientation: mixed;
 }
 .tile-sep { width: 7px; flex-shrink: 0; }
+
+/* 横置牌（副露捡牌） */
+.tile-rotated-wrap {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 37px; height: 28px;
+  flex-shrink: 0;
+}
+.tile-rotated-wrap .tile {
+  transform: rotate(90deg);
+}
+
+/* 牌河 */
+.tile-river {
+  display: grid;
+  grid-template-columns: repeat(10, auto);
+  gap: 1px;
+  padding: 2px 1px;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  width: fit-content;
+}
+
 .tile-examples { margin: 8px 0 4px; }
-.tile-example { margin-bottom: 8px; }
+.tile-example { margin-bottom: 10px; }
 .tile-example-label {
   font-size: .68rem; color: var(--text-muted); margin-bottom: 3px;
 }
@@ -402,9 +424,11 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 @media (max-width: 480px) {
   .tile, .tile-text { width: 20px; height: 27px; }
   .tile-text { font-size: .55rem; }
+  .tile-rotated-wrap { width: 27px; height: 20px; }
 }
 @media (min-width: 481px) and (max-width: 639px) {
   .tile, .tile-text { width: 24px; height: 32px; }
+  .tile-rotated-wrap { width: 32px; height: 24px; }
 }
 
 /* ── 响应式：桌面 ────────────────────────────────────── */
