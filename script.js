@@ -166,6 +166,59 @@ function renderAll() {
   });
 }
 
+/* ── 牌图渲染 ────────────────────────────────────────── */
+const TILE_LABELS = {
+  '1m':'一万','2m':'二万','3m':'三万','4m':'四万','5m':'五万',
+  '6m':'六万','7m':'七万','8m':'八万','9m':'九万','0m':'赤五万',
+  '1p':'一饼','2p':'二饼','3p':'三饼','4p':'四饼','5p':'五饼',
+  '6p':'六饼','7p':'七饼','8p':'八饼','9p':'九饼','0p':'赤五饼',
+  '1s':'一索','2s':'二索','3s':'三索','4s':'四索','5s':'五索',
+  '6s':'六索','7s':'七索','8s':'八索','9s':'九索','0s':'赤五索',
+  'E':'东','S':'南','W':'西','N':'北',
+  'Z':'中','F':'发','B':'白',
+  'X':'牌背','front':'牌面',
+};
+
+function renderTiles(notation) {
+  const row = document.createElement('div');
+  row.className = 'tile-row';
+  notation.trim().split(/\s+/).forEach(tok => {
+    if (tok === '|') {
+      const sep = document.createElement('span');
+      sep.className = 'tile-sep';
+      row.appendChild(sep);
+      return;
+    }
+    const img = document.createElement('img');
+    img.className = 'tile';
+    img.src = `img/tiles/${tok}.svg`;
+    img.alt = TILE_LABELS[tok] || tok;
+    img.title = TILE_LABELS[tok] || tok;
+    img.onerror = function() {
+      const span = document.createElement('span');
+      span.className = 'tile tile-text';
+      span.textContent = TILE_LABELS[tok] || tok;
+      this.replaceWith(span);
+    };
+    row.appendChild(img);
+  });
+  return row;
+}
+
+/* ── 桌面端双列同步展开 ──────────────────────────────── */
+function toggleCardWithPair(card) {
+  const newExpanded = !card.classList.contains('expanded');
+  card.classList.toggle('expanded', newExpanded);
+
+  if (window.innerWidth >= 900) {
+    const grid  = card.closest('.fan-grid');
+    const cards = Array.from(grid.querySelectorAll('.fan-card'));
+    const idx   = cards.indexOf(card);
+    const pair  = idx % 2 === 0 ? cards[idx + 1] : cards[idx - 1];
+    if (pair) pair.classList.toggle('expanded', newExpanded);
+  }
+}
+
 /* ── 构建单张卡片 ────────────────────────────────────── */
 function buildCard(f) {
   const card = document.createElement('div');
@@ -177,7 +230,6 @@ function buildCard(f) {
     `<span class="tag tag-${t}">${t}</span>`
   ).join('');
 
-  // 详情内容
   const condHtml = f.conditions
     ? `<div class="detail-row"><strong>条件</strong><span>${f.conditions}</span></div>` : '';
   const excludeNames = f.excludes?.filter(Boolean) || [];
@@ -190,8 +242,9 @@ function buildCard(f) {
   const srcHtml  = `<div class="detail-row"><strong>来源</strong><span>${f.source}</span></div>`;
   const notesHtml = f.notes
     ? `<p class="card-notes">${f.notes}</p>` : '';
+  const tipsHtml = f.tips
+    ? `<p class="card-tips">${f.tips}</p>` : '';
 
-  // 计番 checkbox
   const isChecked = state.selected.has(f.id);
   const calcHtml = `
     <div class="calc-check-wrap">
@@ -208,23 +261,43 @@ function buildCard(f) {
       </div>
       <p class="card-desc">${f.desc}</p>
       <div class="card-tags">${tagsHtml}</div>
+      ${f.example ? '<div class="tile-primary"></div>' : ''}
     </div>
     <div class="card-details">
-      ${condHtml}${exclHtml}${htHtml}${meldHtml}${srcHtml}${notesHtml}
+      ${condHtml}${exclHtml}
+      ${f.examples?.length ? '<div class="tile-examples"></div>' : ''}
+      ${tipsHtml}
+      ${htHtml}${meldHtml}${srcHtml}${notesHtml}
     </div>
     ${calcHtml}
   `;
 
+  if (f.example) {
+    card.querySelector('.tile-primary').appendChild(renderTiles(f.example));
+  }
+
+  if (f.examples?.length) {
+    const wrap = card.querySelector('.tile-examples');
+    f.examples.forEach(({ label, tiles }) => {
+      const item = document.createElement('div');
+      item.className = 'tile-example';
+      if (label) {
+        const lbl = document.createElement('div');
+        lbl.className = 'tile-example-label';
+        lbl.textContent = label;
+        item.appendChild(lbl);
+      }
+      item.appendChild(renderTiles(tiles));
+      wrap.appendChild(item);
+    });
+  }
+
   if (isChecked) card.classList.add('calc-selected');
 
-  // 点击展开/收起（非计番模式）
   card.querySelector('.card-main').addEventListener('click', () => {
-    if (!state.calcMode) {
-      card.classList.toggle('expanded');
-    }
+    if (!state.calcMode) toggleCardWithPair(card);
   });
 
-  // 计番 checkbox 事件
   const checkbox = card.querySelector('.calc-checkbox');
   checkbox.addEventListener('change', e => {
     e.stopPropagation();
