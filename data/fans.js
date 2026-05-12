@@ -29,8 +29,12 @@ const FANS_DATA = [
     handTypes: ["国士"], meldAllowed: false,
     tags: ["字牌", "幺九", "门清", "特殊牌型"], source: "国标/日麻",
     notes: "（村）舍牌不含任意国士牌时达成 13 面听牌，称「国士无振 13 面」，可额外计 64 番。",
-    example: "1m 9m 1p 9p 1s 9s E S W N Z F B | 1m",
-    tips: "13 张幺九字各一张，其中任意一种再凑一张作将牌，共 14 张。字牌（东南西北中发白）和数字幺九（一九万、一九饼、一九索）都算在内。" },
+    example: "1m 1m 1p 9p 1s 9s E S W N Z F B | 9m ",
+    examples: [
+      { label: "国士无双十三面", tiles: "1m 9m 1p 9p 1s 9s E S W N Z F B", wait:   ["1m", "9m", "1p", "9p", "1s", "9s", "E", "S", "W", "N", "Z", "F", "B"] },
+      { label: "国士无振十三面", tiles: "1m 9m 1p 9p 1s 9s E S W N Z F B", wait:   ["1m", "9m", "1p", "9p", "1s", "9s", "E", "S", "W", "N", "Z", "F", "B"], river: "2s 5s 6p 3m 4m 7p 7p",},
+ ],
+    tips: "共计13 张的幺九字牌各一张，其中任意一种再凑一张作雀头，共 14 张。字牌（东南西北中发白）和幺九（一九万、一九饼、一九索）都算在内。" },
 
   { id: "da_si_xi", name: "大四喜", fan: 88,
     desc: "东南西北四种风牌各一刻子，加任意雀头。",
@@ -38,8 +42,8 @@ const FANS_DATA = [
     excludes: ["碰碰和", "三风刻", "门风刻", "圈风刻"],
     handTypes: ["33332"], meldAllowed: true,
     tags: ["风牌", "刻子", "字牌"], source: "国标",
-    example: "E E E | S S S | W W W | N N N | Z Z",
-    tips: "将牌可以是任意牌（字牌或数牌均可）。四组风刻本身已完整，将牌只是凑 14 张用。" },
+    example: "E E E | S S S | W W W | N N N | 2s 2s",
+    tips: "雀头可以是任意牌（字牌或数牌均可）。四组风刻本身已完整，雀头只是凑 14 张用。" },
 
   { id: "da_san_yuan", name: "大三元", fan: 88,
     desc: "中发白三元牌各一刻子，加任意一个面子和任意雀头。",
@@ -48,7 +52,7 @@ const FANS_DATA = [
     handTypes: ["33332"], meldAllowed: true,
     tags: ["三元牌", "刻子", "字牌"], source: "国标",
     example: "Z Z Z | F F F | B B B | 1m 2m 3m | 5p 5p",
-    tips: "中发白三刻固定，第四组面子和将牌随意搭配即可。将牌可以是字牌或数牌，不要求和前三组相关。" },
+    tips: "中发白三刻固定，第四组面子和雀头随意搭配即可。雀头可以是字牌或数牌，不要求和前三组相关。" },
 
   { id: "lv_yi_se", name: "绿一色", fan: 88,
     desc: "由 2、3、4、6、8 条和发牌组成的合法 33332 胡牌。",
@@ -60,21 +64,22 @@ const FANS_DATA = [
     examples: [
       { label: "含发刻", tiles: "2s 3s 4s | 6s 6s 6s | 2s 3s 4s | F F F | 8s 8s" },
       { label: "纯绿（无发）", tiles: "2s 3s 4s | 2s 3s 4s | 6s 6s 6s | 8s 8s 8s | 4s 4s" },
+      { label: "七对子", tiles: "2s 2s 2s 2s 3s 3s 4s 4s 6s 6s 8s 8s F F" },
     ],
     tips: "只能用索子中的 2、3、4、6、8，以及发牌（绿色字牌），不能有其他牌。含发时不计清一色；纯索子无发时同时计清一色。" },
 
   { id: "jiu_lian_bao_deng", name: "九莲宝灯", fan: 88,
     desc: "同一花色的 1112345678999 加任意一张该花色牌。",
-    conditions: "必须门清。可听 9 张（纯正九莲），也可缺一张听单张缺口。",
+    conditions: "必须门清。可听 9 张（纯正九莲），也可缺一张听单张缺口。部分规则严格要求必须听9张的情况才算",
     excludes: ["清一色", "门前清", "幺九刻"],
     handTypes: ["33332"], meldAllowed: false,
     tags: ["一色", "幺九", "门清"], source: "国标",
     notes: "（村）舍牌不含该花色牌的纯正九莲称「无振纯九」，额外计 64 番。",
-    example: "1p 1p 1p | 2p 3p 4p | 5p 5p | 6p 7p 8p | 9p 9p 9p",
+    example: "1p 1p 1p 2p 3p 4p 5p 5p 7p 8p 9p 9p 9p | 6p",
     examples: [
-      { label: "饼子", tiles: "1p 1p 1p | 2p 3p 4p | 5p 5p | 6p 7p 8p | 9p 9p 9p" },
-      { label: "索子", tiles: "1s 1s 1s | 2s 3s 4s | 5s 5s | 6s 7s 8s | 9s 9s 9s" },
-      { label: "万子", tiles: "1m 1m 1m | 2m 3m 4m | 5m 5m | 6m 7m 8m | 9m 9m 9m" },
+      { label: "纯正九莲宝灯", tiles: "1p 1p 1p 2p 3p 4p 5p 6p 7p 8p 9p 9p 9p", wait:   ["1p", "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p"] },
+      { label: "无振纯九", tiles: "1p 1p 1p 2p 3p 4p 5p 6p 7p 8p 9p 9p 9p", wait:   ["1p", "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p"], river: "2s 5s E 3m 4m S Z", },
+      { label: "高目九莲低目清一色", tiles: "1p 1p 1p 3p 4p 5p 5p 6p 7p 8p 9p 9p 9p | 2p",  wait:   ["4p", "5p", "7p", "8p"] },
     ],
     tips: "基本形为 1112345678999，手里保持这 13 张后，摸到该花色任意一张均可和牌（共 9 种张），称「纯正九莲」。将牌不可以是字牌。" },
 
@@ -84,7 +89,7 @@ const FANS_DATA = [
     handTypes: ["33332"], meldAllowed: true,
     tags: ["杠子"], source: "国标",
     notes: "可复合暗刻系列（4/3/2 暗刻，只取最高）。",
-    example: "1m 1m 1m 1m | E E E E | 9p 9p 9p 9p | B B B B | Z Z",
+    example: "1m 1m 1m 1m | X E E X | X 9p 9p X | B B B B | Z Z",
     tips: "四组杠子（每组 4 张相同），加单张将牌，共 18 张展示。杠可以是暗杠或明杠。" },
 
   { id: "lian_qi_dui", name: "连七对", fan: 88,
@@ -94,11 +99,12 @@ const FANS_DATA = [
     handTypes: ["七对"], meldAllowed: false,
     tags: ["一色", "七对", "门清"], source: "国标",
     notes: "2~8 的连七对分别称大数邻（万）、大竹林（条）、大车轮（饼）。",
-    example: "2p 2p | 3p 3p | 4p 4p | 5p 5p | 6p 6p | 7p 7p | 8p 8p",
+    example: "1p 1p | 2p 2p | 3p 3p | 4p 4p | 5p 5p | 6p 6p | 7p 7p",
     examples: [
       { label: "大车轮（2~8 饼）", tiles: "2p 2p | 3p 3p | 4p 4p | 5p 5p | 6p 6p | 7p 7p | 8p 8p" },
       { label: "大竹林（2~8 索）", tiles: "2s 2s | 3s 3s | 4s 4s | 5s 5s | 6s 6s | 7s 7s | 8s 8s" },
       { label: "大数邻（2~8 万）", tiles: "2m 2m | 3m 3m | 4m 4m | 5m 5m | 6m 6m | 7m 7m | 8m 8m" },
+      { label: "低目清一色可能", tiles: "2m 2m | 3m 3m | 4m 4m | 5m 5m | 6m 6m | 7m 7m | 8m", wait:   ["2m", "5m", "8m"] },
     ],
     tips: "7 对的序号必须连续，如 3456789 或 2345678 均可。三种特殊命名（大车轮/大竹林/大数邻）专指 2~8 连七对，起止不同则只称连七对。" },
 
@@ -116,7 +122,7 @@ const FANS_DATA = [
     excludes: ["听单张", "碰碰和", "门前清"],
     handTypes: ["33332"], meldAllowed: false,
     tags: ["暗刻", "门清", "村规"], source: "村规",
-    example: "1m 1m 1m | 9p 9p 9p | E E E | Z Z Z | N N",
+    example: "1m 1m 1m | 9p 9p 9p | E E E | Z Z Z | N | N",
     tips: "四组暗刻全部为手牌中自摸的刻子（不可碰牌），听牌时为单张将牌的单骑听，区别于双碰听的普通四暗刻（64 番）。" },
 
   { id: "da_qi_xing", name: "大七星", fan: 88,
@@ -135,7 +141,9 @@ const FANS_DATA = [
     conditions: "闲家限定，必须门清自摸。",
     excludes: ["不求人"],
     handTypes: ["33332", "七对", "不靠"], meldAllowed: false,
-    tags: ["特殊和牌", "门清", "自摸", "村规"], source: "村规" },
+    tags: ["特殊和牌", "门清", "自摸", "村规"], source: "村规" ,
+    example: "1s 2s 3s | 4s 5s 6s | 7s 8s 9s | B B | E E | E", },
+
 
   { id: "ren_he", name: "人和", fan: 64,
     desc: "闲家起手 13 张满足听牌，胡庄家打出的第一张牌。",

@@ -217,10 +217,36 @@ function renderTiles(notation) {
 }
 
 function renderRiver(notation) {
+  const wrap = document.createElement('div');
+  wrap.className = 'tile-river-wrap';
+  const label = document.createElement('span');
+  label.className = 'tile-river-label';
+  label.textContent = '牌河';
+  wrap.appendChild(label);
   const grid = document.createElement('div');
   grid.className = 'tile-river';
-  notation.trim().split(/\s+/).forEach(tok => grid.appendChild(makeTileImg(tok)));
-  return grid;
+  notation.trim().split(/\s+/).forEach(tok => {
+    const img = makeTileImg(tok);
+    img.classList.add('tile-river-mark');
+    grid.appendChild(img);
+  });
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function renderWait(waitArr) {
+  const row = document.createElement('div');
+  row.className = 'tile-wait-row';
+  const label = document.createElement('span');
+  label.className = 'tile-wait-label';
+  label.textContent = '听牌';
+  row.appendChild(label);
+  waitArr.forEach(code => {
+    const img = makeTileImg(code);
+    img.classList.add('tile-wait-mark');
+    row.appendChild(img);
+  });
+  return row;
 }
 
 /* ── 桌面端双列同步展开 ──────────────────────────────── */
@@ -296,7 +322,7 @@ function buildCard(f) {
 
   if (f.examples?.length) {
     const wrap = card.querySelector('.tile-examples');
-    f.examples.forEach(({ label, tiles, river }) => {
+    f.examples.forEach(({ label, tiles, river, wait }) => {
       const item = document.createElement('div');
       item.className = 'tile-example';
       if (label) {
@@ -307,6 +333,7 @@ function buildCard(f) {
       }
       if (river) item.appendChild(renderRiver(river));
       if (tiles) item.appendChild(renderTiles(tiles));
+      if (wait?.length) item.appendChild(renderWait(wait));
       wrap.appendChild(item);
     });
   }

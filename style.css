@@ -302,14 +302,41 @@ input  { font-family: inherit; }
 }
 
 /* 牌河 */
+.tile-river-wrap {
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+.tile-river-label {
+  font-size: .68rem; font-weight: 600; white-space: nowrap;
+  color: #b71c1c; background: #ffebee;
+  border: 1px solid #ffcdd2; border-radius: 4px;
+  padding: 1px 6px; display: inline-block;
+  margin-bottom: 3px;
+}
 .tile-river {
   display: grid;
   grid-template-columns: repeat(10, auto);
   gap: 1px;
   padding: 2px 1px;
-  margin-top: 10px;
-  margin-bottom: 4px;
   width: fit-content;
+}
+.tile-river-mark {
+  box-shadow: 0 0 0 2px #b71c1c;
+}
+
+/* 听牌候选 */
+.tile-wait-row {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 3px; margin-top: 5px; padding: 2px 1px;
+}
+.tile-wait-label {
+  font-size: .68rem; font-weight: 600; white-space: nowrap;
+  color: #2e7d32; background: #e8f5e9;
+  border: 1px solid #c8e6c9; border-radius: 4px;
+  padding: 1px 6px; flex-shrink: 0; align-self: flex-start;
+}
+.tile-wait-mark {
+  box-shadow: 0 0 0 2px #2e7d32;
 }
 
 .tile-examples { margin: 8px 0 4px; }
