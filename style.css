@@ -29,7 +29,7 @@
 }
 
 /* ── 基础重置 ────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html { font-size: 15px; scroll-behavior: smooth; }
 body {
   font-family: -apple-system, "PingFang SC", "Hiragino Sans GB",
@@ -450,6 +450,7 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
   border-radius: 2px;
   padding: 0 1px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .term:hover { background: #ffe082; }
 

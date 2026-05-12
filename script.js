@@ -58,6 +58,10 @@ function bindEvents() {
     renderAll();
   });
 
+  document.addEventListener('touchstart', e => {
+    if (e.target.closest('.term')) e.stopPropagation();
+  }, { passive: true });
+
   document.addEventListener('click', e => {
     const term = e.target.closest('.term');
     if (term) {
