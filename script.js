@@ -56,6 +56,12 @@ function bindEvents() {
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
     renderAll();
   });
+
+  document.addEventListener('click', e => {
+    const term = e.target.closest('.term');
+    if (term) { showTermPopup(term, term.dataset.term); return; }
+    if (!e.target.closest('#term-popup')) hideTermPopup();
+  });
 }
 
 /* ── 渲染筛选 chips ─────────────────────────────────── */
@@ -217,9 +223,9 @@ function buildCard(f) {
 
   if (isChecked) card.classList.add('calc-selected');
 
-  // 点击展开/收起（非计番模式）
-  card.querySelector('.card-main').addEventListener('click', () => {
-    if (!state.calcMode) {
+  // 点击展开/收起（非计番模式，术语点击除外）
+  card.querySelector('.card-main').addEventListener('click', e => {
+    if (!state.calcMode && !e.target.closest('.term')) {
       card.classList.toggle('expanded');
     }
   });
@@ -238,7 +244,139 @@ function buildCard(f) {
     updateCalcBar();
   });
 
+  linkifyText(card);
   return card;
+}
+
+/* ── 术语联动 ────────────────────────────────────────── */
+let _termMap = null, _termPattern = null;
+
+function getTermMap() {
+  if (_termMap) return _termMap;
+  _termMap = new Map();
+  if (typeof GLOSSARY !== 'undefined') {
+    for (const [term, def] of Object.entries(GLOSSARY))
+      _termMap.set(term, { type: 'gloss', def });
+  }
+  FANS_DATA.forEach(f => {
+    _termMap.set(f.name, { type: 'fan', data: f });
+    (f.nameAlt || []).forEach(alt => _termMap.set(alt, { type: 'fan', data: f }));
+  });
+  return _termMap;
+}
+
+function getTermPattern() {
+  if (_termPattern) return _termPattern;
+  const terms = [...getTermMap().keys()].sort((a, b) => b.length - a.length);
+  _termPattern = new RegExp(
+    terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g'
+  );
+  return _termPattern;
+}
+
+function linkifyText(rootEl) {
+  const pattern = getTermPattern();
+  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+      if (node.parentElement?.closest(
+        '.tile-row,.tile-river,.tile-wait-row,.card-tags,.calc-check-wrap,.term,.fan-badge,.card-source,.card-top'
+      )) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) nodes.push(n);
+  nodes.forEach(textNode => {
+    const text = textNode.textContent;
+    pattern.lastIndex = 0;
+    if (!pattern.test(text)) return;
+    pattern.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0, match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match.index > last)
+        frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+      const span = document.createElement('span');
+      span.className = 'term';
+      span.dataset.term = match[0];
+      span.textContent = match[0];
+      frag.appendChild(span);
+      last = match.index + match[0].length;
+    }
+    if (last < text.length)
+      frag.appendChild(document.createTextNode(text.slice(last)));
+    textNode.parentNode.replaceChild(frag, textNode);
+  });
+}
+
+function showTermPopup(termEl, termName) {
+  let popup = document.getElementById('term-popup');
+  if (!popup) {
+    popup = document.createElement('div');
+    popup.id = 'term-popup';
+    document.body.appendChild(popup);
+  }
+  const entry = getTermMap().get(termName);
+  if (!entry) return;
+  if (entry.type === 'fan') {
+    const f = entry.data;
+    popup.innerHTML = `
+      <div class="term-popup-head">
+        <span class="fan-badge badge-${f.fan} term-popup-badge">${f.fan === 0 ? '立' : f.fan}</span>
+        <strong class="term-popup-name">${f.name}</strong>
+      </div>
+      <p class="term-popup-desc">${f.desc}</p>
+      <button class="term-popup-goto" data-id="${f.id}">→ 查看完整</button>`;
+    popup.querySelector('.term-popup-goto').addEventListener('click', e => {
+      e.stopPropagation();
+      hideTermPopup();
+      scrollToFanCard(f.id);
+    });
+  } else {
+    popup.innerHTML = `
+      <div class="term-popup-head"><strong class="term-popup-name">${termName}</strong></div>
+      <p class="term-popup-desc">${entry.def}</p>`;
+  }
+  popup.classList.remove('hidden');
+  const rect = termEl.getBoundingClientRect();
+  const W = 250, M = 8;
+  let left = rect.left + window.scrollX;
+  if (left + W > window.innerWidth - M) left = window.innerWidth - W - M;
+  if (left < M) left = M;
+  popup.style.left = left + 'px';
+  popup.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+}
+
+function hideTermPopup() {
+  document.getElementById('term-popup')?.classList.add('hidden');
+}
+
+function scrollToFanCard(id) {
+  const f = FANS_DATA.find(x => x.id === id);
+  if (!f) return;
+  let needsRender = false;
+  if (state.fanFilter !== null && state.fanFilter !== f.fan) {
+    state.fanFilter = null;
+    document.querySelectorAll('.fan-chip').forEach(c => c.classList.remove('active'));
+    needsRender = true;
+  }
+  if (f.dlc && !state.showDlc) {
+    state.showDlc = true;
+    document.getElementById('dlc-toggle').textContent = '隐藏 DLC';
+    needsRender = true;
+  }
+  if (needsRender) renderAll();
+  const card = document.querySelector(`.fan-card[data-id="${id}"]`);
+  if (!card) return;
+  card.closest('.fan-tier')?.classList.remove('collapsed');
+  if (!card.classList.contains('expanded')) card.classList.add('expanded');
+  setTimeout(() => {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('card-highlight');
+    setTimeout(() => card.classList.remove('card-highlight'), 2000);
+  }, 50);
 }
 
 /* ── 计番模式 ────────────────────────────────────────── */

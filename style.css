@@ -347,6 +347,54 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 .chip.fan-chip[data-fan="0"]   { --chip-color: var(--c0);  }
 .chip.fan-chip.active { background: var(--chip-color, var(--accent)); }
 
+/* ── 术语高亮与弹窗 ──────────────────────────────────── */
+.term {
+  background: #fff3cd;
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: pointer;
+}
+.term:hover { background: #ffe082; }
+
+#term-popup {
+  position: absolute;
+  z-index: 500;
+  width: 250px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  padding: 10px 12px;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+#term-popup.hidden { display: none; }
+
+.term-popup-head {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 5px;
+}
+.term-popup-badge { font-size: .68rem !important; flex-shrink: 0; }
+.term-popup-name  { font-size: .9rem; font-weight: 700; }
+.term-popup-desc  { font-size: .8rem; color: #4a3f30; margin-bottom: 8px; }
+
+.term-popup-goto {
+  display: block; width: 100%;
+  padding: 4px 8px; border-radius: 5px;
+  background: var(--accent); color: #fff;
+  border: none; font-size: .78rem;
+  cursor: pointer; text-align: center;
+}
+.term-popup-goto:hover { background: #a52020; }
+
+.card-highlight {
+  animation: card-hl 2s ease-out forwards;
+}
+@keyframes card-hl {
+  0%   { box-shadow: inset 0 0 0 2px var(--accent); }
+  100% { box-shadow: inset 0 0 0 2px transparent; }
+}
+
 /* ── 辅助类 ─────────────────────────────────────────── */
 .hidden { display: none !important; }
 
