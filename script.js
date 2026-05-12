@@ -1,11 +1,12 @@
 /* ── 状态 ───────────────────────────────────────────── */
 const state = {
-  search:     '',
-  fanFilter:  null,        // null = 全部，或具体番数
-  tagFilters: new Set(),   // AND 逻辑
-  calcMode:   false,
-  selected:   new Set(),   // 计番模式中已勾选的 id
-  showDlc:    false,
+  search:       '',
+  fanFilter:    null,        // null = 全部，或具体番数
+  tagFilters:   new Set(),   // AND 逻辑
+  calcMode:     false,
+  selected:     new Set(),   // 计番模式中已勾选的 id
+  showDlc:      false,
+  jumpOriginId: null,        // 跳转前的来源卡片 id
 };
 
 /* ── DOM 引用 ────────────────────────────────────────── */
@@ -59,7 +60,12 @@ function bindEvents() {
 
   document.addEventListener('click', e => {
     const term = e.target.closest('.term');
-    if (term) { showTermPopup(term, term.dataset.term); return; }
+    if (term) {
+      if (term === _activeTerm) { hideTermPopup(); return; }
+      _activeTerm = term;
+      showTermPopup(term, term.dataset.term);
+      return;
+    }
     if (!e.target.closest('#term-popup')) hideTermPopup();
   });
 }
@@ -368,7 +374,7 @@ function buildCard(f) {
 }
 
 /* ── 术语联动 ────────────────────────────────────────── */
-let _termMap = null, _termPattern = null;
+let _termMap = null, _termPattern = null, _activeTerm = null;
 
 function getTermMap() {
   if (_termMap) return _termMap;
@@ -450,8 +456,9 @@ function showTermPopup(termEl, termName) {
       <button class="term-popup-goto" data-id="${f.id}">→ 查看完整</button>`;
     popup.querySelector('.term-popup-goto').addEventListener('click', e => {
       e.stopPropagation();
+      const originCard = termEl.closest('.fan-card');
       hideTermPopup();
-      scrollToFanCard(f.id);
+      scrollToFanCard(f.id, originCard?.dataset.id ?? null);
     });
   } else {
     popup.innerHTML = `
@@ -469,10 +476,15 @@ function showTermPopup(termEl, termName) {
 }
 
 function hideTermPopup() {
+  _activeTerm = null;
   document.getElementById('term-popup')?.classList.add('hidden');
 }
 
-function scrollToFanCard(id) {
+function scrollToFanCard(id, originId = null) {
+  document.querySelectorAll('.card-highlight').forEach(c => c.classList.remove('card-highlight'));
+  hideBackButton();
+  state.jumpOriginId = null;
+
   const f = FANS_DATA.find(x => x.id === id);
   if (!f) return;
   let needsRender = false;
@@ -494,8 +506,37 @@ function scrollToFanCard(id) {
   setTimeout(() => {
     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     card.classList.add('card-highlight');
-    setTimeout(() => card.classList.remove('card-highlight'), 2000);
+    if (originId) {
+      state.jumpOriginId = originId;
+      showBackButton();
+    }
   }, 50);
+}
+
+function showBackButton() {
+  let btn = document.getElementById('back-to-origin');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'back-to-origin';
+    btn.className = 'btn-outline hidden';
+    btn.textContent = '← 回到原条目';
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.card-highlight').forEach(c => c.classList.remove('card-highlight'));
+      const id = state.jumpOriginId;
+      state.jumpOriginId = null;
+      hideBackButton();
+      if (id) {
+        const card = document.querySelector(`.fan-card[data-id="${id}"]`);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    document.body.appendChild(btn);
+  }
+  btn.classList.remove('hidden');
+}
+
+function hideBackButton() {
+  document.getElementById('back-to-origin')?.classList.add('hidden');
 }
 
 /* ── 计番模式 ────────────────────────────────────────── */
