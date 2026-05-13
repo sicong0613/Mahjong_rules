@@ -122,6 +122,21 @@ input  { font-family: inherit; }
   padding: 4px 10px 20px;
 }
 
+/* ── 页脚 ───────────────────────────────────────────── */
+#site-footer {
+  padding: 18px 20px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: .72rem;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+#site-footer a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ── 番数分区 ─────────────────────────────────────────── */
 .fan-tier { margin-bottom: 16px; }
 
@@ -544,3 +559,294 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 
 /* ── 滚动锚点偏移（跳转定位用）────────────────────────── */
 .fan-tier { scroll-margin-top: calc(var(--header-h) + var(--filter-h) + 8px); }
+
+/* ═══════════════════════════════════════════════════════
+   手牌计番页面  (.hc-*)
+   ═══════════════════════════════════════════════════════ */
+
+/* 页面容器（全屏覆盖） */
+.hc-page {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+.hc-page.hidden { display: none; }
+
+/* 顶栏 */
+.hc-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 48px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.hc-title { font-weight: 700; font-size: .95rem; }
+.hc-btn-ghost {
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: .85rem;
+  border-radius: 6px;
+}
+.hc-btn-ghost:hover { background: var(--border); }
+
+/* 可滚动内容区 */
+.hc-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+}
+
+/* 各分区 */
+.hc-section { margin-bottom: 10px; }
+.hc-section-label {
+  font-size: .75rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hc-win-row { display: flex; align-items: center; gap: 10px; }
+.hc-win-row .hc-section-label { margin-bottom: 0; white-space: nowrap; }
+
+/* 牌行（立牌/副露缓冲） */
+.hc-tile-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-height: 40px;
+  align-items: center;
+}
+
+/* ── 牌元素（SVG img 版本）── */
+.hc-tile {
+  display: inline-block;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  vertical-align: top;
+  flex-shrink: 0;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #fff, 0 0 0 3px rgba(0,0,0,.6);
+}
+.hc-tile img {
+  display: block;
+  border-radius: 3px;
+  object-fit: contain;
+}
+.hc-tile:active img { opacity: .7; }
+
+/* 大号（选牌器） */
+.hc-tile-lg img { width: 32px; height: 42px; }
+
+/* 中号（手牌区） */
+.hc-tile-md img { width: 26px; height: 34px; }
+
+/* 空槽（无图片） */
+.hc-empty {
+  border: 1.5px dashed var(--border);
+  border-radius: 3px;
+  opacity: .45;
+  cursor: default;
+  box-shadow: none;
+}
+.hc-tile-lg.hc-empty { width: 32px; height: 42px; }
+.hc-tile-md.hc-empty { width: 26px; height: 34px; }
+.hc-win-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* 选中（待替换） */
+.hc-selected img {
+  box-shadow: 0 0 0 2.5px var(--accent), 0 0 0 1px rgba(0,0,0,.35);
+}
+
+/* 暗杠遮盖 */
+.hc-concealed img { opacity: .3; }
+
+/* 待替换的空槽（点击可取消） */
+.hc-empty.hc-replacing {
+  border-color: var(--accent);
+  border-style: solid;
+  opacity: .75;
+  cursor: pointer;
+}
+
+/* 已达4张上限：变暗且禁用 */
+.hc-exhausted { opacity: .22; pointer-events: none; }
+
+/* ── 副露卡片 ── */
+.hc-meld-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.hc-meld-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 6px;
+}
+.hc-meld-tiles { display: flex; gap: 2px; }
+.hc-meld-ctrl  { display: flex; align-items: center; gap: 4px; }
+.hc-meld-lbl   { font-size: .72rem; color: var(--text-muted); }
+.hc-btn-sm {
+  font-size: .7rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  color: var(--text);
+}
+.hc-btn-sm:hover { background: var(--border); }
+.hc-btn-del { color: #b71c1c; border-color: #e57373; }
+.hc-btn-xs {
+  font-size: .68rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+/* ── 设置区 ── */
+.hc-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.hc-check { display: flex; align-items: center; gap: 4px; font-size: .82rem; cursor: pointer; }
+.hc-winds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: .82rem;
+}
+.hc-winds label { display: flex; align-items: center; gap: 4px; }
+.hc-winds select, .hc-winds input[type=number] {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: .82rem;
+}
+.hc-winds input[type=number] { width: 44px; }
+
+/* ── 计算按钮 ── */
+.hc-calc-row { display: flex; justify-content: center; padding: 4px 0; }
+.hc-calc-btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.hc-calc-btn:disabled { opacity: .4; cursor: not-allowed; }
+.hc-calc-btn:not(:disabled):hover { filter: brightness(1.1); }
+
+/* ── 结果区 ── */
+.hc-result {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 4px;
+}
+.hc-result-total {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.hc-result-list { display: flex; flex-direction: column; gap: 4px; }
+.hc-result-row  { display: flex; justify-content: space-between; font-size: .85rem; }
+.hc-result-name { color: var(--text); }
+.hc-result-val  { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.hc-result-none { color: var(--text-muted); font-size: .85rem; }
+.hc-err { color: #b71c1c; font-size: .85rem; }
+
+/* ── 底部固定栏（模式按钮 + 选牌器） ── */
+.hc-bottom {
+  flex-shrink: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 6px 8px 8px;
+}
+
+/* 模式按钮 */
+.hc-mode-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.hc-mode-btn {
+  flex: 1;
+  padding: 6px 2px;
+  font-size: .76rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.hc-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.hc-mode-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+/* 选牌器 */
+.hc-picker { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.hc-picker-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+/* ── Toast ── */
+.hc-toast {
+  position: fixed;
+  bottom: 30%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(0,0,0,.75);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: .85rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s, transform .2s;
+  z-index: 600;
+  white-space: nowrap;
+}
+.hc-toast.hc-toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .hc-tile { box-shadow: 0 0 0 1px #000, 0 0 0 3px rgba(255,255,255,.35); }
+}

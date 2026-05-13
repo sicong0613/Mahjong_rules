@@ -13,6 +13,7 @@
     <div class="header-inner">
       <h1>麻将番种速查</h1>
       <input type="search" id="search-input" placeholder="搜索番种…" autocomplete="off" spellcheck="false">
+      <button id="hand-calc-btn" class="btn-outline" title="手牌计番">手牌</button>
       <button id="calc-toggle" class="btn-outline" title="切换计番模式">计番</button>
     </div>
   </header>
@@ -46,8 +47,78 @@
     </div>
   </div>
 
+  <!-- 手牌计番页面 -->
+  <div id="hand-calc-page" class="hc-page hidden">
+    <div class="hc-topbar">
+      <button id="hc-back" class="hc-btn-ghost">← 返回</button>
+      <span class="hc-title">手牌计番</span>
+      <button id="hc-clear-all" class="hc-btn-ghost">清空</button>
+    </div>
+
+    <div class="hc-content">
+      <div class="hc-section">
+        <div class="hc-section-label">立牌 <span id="hc-standing-count">0/13</span></div>
+        <div id="hc-standing-area" class="hc-tile-row"></div>
+      </div>
+
+      <div class="hc-section hc-win-row">
+        <div class="hc-section-label">和牌张</div>
+        <div id="hc-win-area" class="hc-tile-row"></div>
+      </div>
+
+      <div class="hc-section">
+        <div class="hc-section-label">副露</div>
+        <div id="hc-meld-area" class="hc-meld-row"></div>
+      </div>
+
+      <div class="hc-section hidden" id="hc-buffer-section">
+        <div class="hc-section-label"><span id="hc-buffer-label">组合中 (0/3)</span> <button id="hc-buffer-clear" class="hc-btn-ghost hc-btn-xs">取消</button></div>
+        <div id="hc-buffer-area" class="hc-tile-row"></div>
+      </div>
+
+      <div class="hc-section hc-settings">
+        <label class="hc-check"><input type="checkbox" id="hc-self-drawn"> 自摸</label>
+        <label class="hc-check"><input type="checkbox" id="hc-last-tile"> 和绝张</label>
+        <label class="hc-check"><input type="checkbox" id="hc-kong-win"> 杠上开花</label>
+        <label class="hc-check"><input type="checkbox" id="hc-wall-last"> 海底捞月</label>
+        <label class="hc-check"><input type="checkbox" id="hc-river-last"> 河底捞鱼</label>
+        <label class="hc-check"><input type="checkbox" id="hc-riichi" disabled> 立直</label>
+      </div>
+
+      <div class="hc-section hc-winds">
+        <label>圈风 <select id="hc-prevalent"><option value="0">东</option><option value="1">南</option><option value="2">西</option><option value="3">北</option></select></label>
+        <label>门风 <select id="hc-seat"><option value="0">东</option><option value="1">南</option><option value="2">西</option><option value="3">北</option></select></label>
+        <label>花牌 <input type="number" id="hc-flowers" min="0" max="8" value="0"></label>
+      </div>
+
+      <div class="hc-section hc-calc-row">
+        <button id="hc-calc-btn" class="hc-calc-btn" disabled>计 算</button>
+      </div>
+
+      <div id="hc-result" class="hc-result hidden"></div>
+    </div>
+
+    <div class="hc-bottom">
+      <div class="hc-mode-row">
+        <button class="hc-mode-btn active" data-mode="standing">立牌</button>
+        <button class="hc-mode-btn" data-mode="meld">吃/碰</button>
+        <button class="hc-mode-btn" data-mode="minggang">明杠</button>
+        <button class="hc-mode-btn" data-mode="angang">暗杠</button>
+      </div>
+      <div id="hc-picker" class="hc-picker"></div>
+    </div>
+  </div>
+
+  <footer id="site-footer">
+    <p>计番引擎基于 <a href="https://github.com/summerinsects/mahjong-algorithm" target="_blank" rel="noopener">Jeff Wang 的开源库</a>（MIT License）</p>
+    <p>番种数据与 UI 由 <a href="https://github.com/sicong0613/Mahjong_rules" target="_blank" rel="noopener">sicong0613</a> 整理 &amp; 与 Claude（Anthropic）协作开发</p>
+  </footer>
+
   <script src="data/glossary.js?v=2"></script>
   <script src="data/fans.js?v=2"></script>
+  <script src="data/fan_calculator.js"></script>
+  <script src="calculator.js"></script>
+  <script src="calc-ui.js"></script>
   <script src="script.js?v=2"></script>
 </body>
 </html>
