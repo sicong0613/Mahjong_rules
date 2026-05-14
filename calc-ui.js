@@ -381,6 +381,29 @@
     return { fans: [jl, ...kept], total: kept.reduce((s, f) => s + f.value * f.count, 0) + 88 };
   }
 
+  // ─── fans.js 番值覆盖 ─────────────────────────────────────────
+  // 按 fans.js 中定义的番数覆盖 WASM 内置值，实现自定义番值
+  const _fanValueMap = (() => {
+    const m = new Map();
+    if (typeof FANS_DATA === 'undefined') return m;
+    for (const f of FANS_DATA) {
+      m.set(f.name, f.fan);
+      if (f.nameAlt) for (const alt of f.nameAlt) if (!m.has(alt)) m.set(alt, f.fan);
+    }
+    return m;
+  })();
+
+  function applyFansJsValues(result) {
+    const fans = result.fans.map(f => {
+      const canonicalName = (typeof WASM_NAME_MAP !== 'undefined' && WASM_NAME_MAP[f.name]) || f.name;
+      const v = _fanValueMap.get(canonicalName);
+      if (v === undefined) console.warn(`[fans.js 未命中] WASM 番种名 "${f.name}" 在 fans.js 中找不到对应条目`);
+      return v !== undefined ? { ...f, value: v } : f;
+    });
+    const total = fans.reduce((s, f) => s + f.value * f.count, 0);
+    return { ...result, fans, total };
+  }
+
   // ─── 计算 ──────────────────────────────────────────────────────
   function doCalculate() {
     const packs = S.melds.map(m => {
@@ -405,6 +428,7 @@
         fans: result.fans.map(f => rename[f.name] ? { ...f, name: rename[f.name] } : f),
       };
       result = detectJiuLian(result);
+      result = applyFansJsValues(result);
     }
     renderResult(result);
   }
