@@ -487,6 +487,59 @@
     document.body.style.overflow = '';
   }
 
+  // ─── 番种↔条件联动接口 ────────────────────────────────────────
+  //
+  // 规则表格式（在 CUSTOM_RULES.md 确认后填入）：
+  //   fanId: {
+  //     set: { conditionKey: bool, ... }  // 勾选此番种时强制设置这些条件
+  //   }
+  //
+  // conditionKey 对应 S 上的字段：
+  //   selfDrawn | lastTile | kongWin | wallLast | riverLast
+  //
+  // 示例（待启用）：
+  //   tian_he: { set: { selfDrawn: true  } }   // 天和必然自摸
+  //   di_he:   { set: { selfDrawn: true  } }   // 地和必然自摸
+  //   ren_he:  { set: { selfDrawn: false } }   // 人和必然点炮
+  //
+  const FAN_CONDITION_RULES = {
+    // 村规/日麻番种 checkbox 添加到 UI 后在此补充
+  };
+
+  // 条件 key → checkbox element id
+  const CONDITION_IDS = {
+    selfDrawn: 'hc-self-drawn',
+    lastTile:  'hc-last-tile',
+    kongWin:   'hc-kong-win',
+    wallLast:  'hc-wall-last',
+    riverLast: 'hc-river-last',
+  };
+
+  // 正向：勾选/取消某番种 → 强制同步条件 checkbox
+  function applyFanToConditions(fanId, checked) {
+    const rule = FAN_CONDITION_RULES[fanId];
+    if (!rule?.set) return;
+    if (!checked) return; // 取消番种时不反向撤销条件（条件可能由别处设置）
+    Object.entries(rule.set).forEach(([key, val]) => {
+      S[key] = val;
+      const cb = document.getElementById(CONDITION_IDS[key]);
+      if (cb) cb.checked = val;
+      // 维持 wallLast / riverLast 互斥
+      if (key === 'wallLast'  && val) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
+      if (key === 'riverLast' && val) { S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false; }
+    });
+  }
+
+  // 反向：条件改变 → 取消所有与之矛盾的番种 checkbox
+  function applyConditionToFans(conditionKey, newVal) {
+    Object.entries(FAN_CONDITION_RULES).forEach(([fanId, rule]) => {
+      const required = rule.set?.[conditionKey];
+      if (required === undefined || required === newVal) return;
+      const cb = document.getElementById(`hc-fan-${fanId}`);
+      if (cb?.checked) { cb.checked = false; S[`fan_${fanId}`] = false; }
+    });
+  }
+
   // ─── 初始化 ────────────────────────────────────────────────────
   function init() {
     if (!document.getElementById('hand-calc-page')) return;
@@ -518,16 +571,18 @@
     });
     document.getElementById('hc-buffer-clear').addEventListener('click', () => { S.buffer = []; render(); });
     dom.calcBtn.addEventListener('click', () => Calculator.ready.then(doCalculate));
-    document.getElementById('hc-self-drawn').addEventListener('change', e => { S.selfDrawn  = e.target.checked; });
-    document.getElementById('hc-last-tile').addEventListener('change',  e => { S.lastTile   = e.target.checked; });
-    document.getElementById('hc-kong-win').addEventListener('change',   e => { S.kongWin    = e.target.checked; });
+    document.getElementById('hc-self-drawn').addEventListener('change', e => { S.selfDrawn  = e.target.checked; applyConditionToFans('selfDrawn',  e.target.checked); });
+    document.getElementById('hc-last-tile').addEventListener('change',  e => { S.lastTile   = e.target.checked; applyConditionToFans('lastTile',   e.target.checked); });
+    document.getElementById('hc-kong-win').addEventListener('change',   e => { S.kongWin    = e.target.checked; applyConditionToFans('kongWin',    e.target.checked); });
     document.getElementById('hc-wall-last').addEventListener('change',  e => {
       S.wallLast  = e.target.checked;
       if (e.target.checked) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
+      applyConditionToFans('wallLast', e.target.checked);
     });
     document.getElementById('hc-river-last').addEventListener('change', e => {
       S.riverLast = e.target.checked;
       if (e.target.checked) { S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false; }
+      applyConditionToFans('riverLast', e.target.checked);
     });
     document.getElementById('hc-prevalent').addEventListener('change',  e => { S.prevalentWind = +e.target.value; });
     document.getElementById('hc-seat').addEventListener('change',       e => { S.seatWind      = +e.target.value; });
