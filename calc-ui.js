@@ -44,6 +44,7 @@
       buffer: [],     // 副露/暗杠缓冲
       replacing: null,// {area:'standing'|'win', index} | null
       selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false,
+      fan_tian_he: false, fan_di_he: false, fan_ren_he: false,
       flowers: 0, prevalentWind: 0, seatWind: 0,
     };
   }
@@ -170,20 +171,27 @@
         tiles: kongTiles,
         concealed: S.mode === 'angang', promoted: false,
       });
+      trimStandingToMax();
     }
     render();
+  }
+
+  function trimStandingToMax() {
+    const max = maxStanding();
+    if (S.standing.length > max) S.standing = S.standing.slice(0, max);
   }
 
   function flushBuffer() {
     if (S.mode === 'meld') {
       const meld = tryFormMeld(S.buffer);
-      if (meld) S.melds.push(meld);
+      if (meld) { S.melds.push(meld); trimStandingToMax(); }
       else showToast('无效吃/碰：需要顺子或刻子');
     } else if (S.mode === 'minggang' || S.mode === 'angang') {
       const codes = S.buffer.map(t => t.code);
       if (codes.every(c => c === codes[0])) {
         S.melds.push({ type: 'kong', tile: codes[0], tiles: [...S.buffer],
                        concealed: S.mode === 'angang', promoted: false });
+        trimStandingToMax();
       } else {
         showToast('杠需要4张相同的牌');
       }
@@ -224,7 +232,18 @@
     renderBuffer();
     updateModeButtons();
     updatePickerCounts();
+    updateKongWinCheckbox();
     dom.calcBtn.disabled = !S.winTile || S.standing.length === 0 || !!S.replacing;
+  }
+
+  function updateKongWinCheckbox() {
+    const hasKong = S.melds.some(m => m.type === 'kong');
+    const cb = document.getElementById('hc-kong-win');
+    cb.disabled = !hasKong;
+    if (!hasKong && S.kongWin) {
+      S.kongWin = false;
+      cb.checked = false;
+    }
   }
 
   // 点击已有牌 → 该槽清空等待重输；点击空槽 → 取消并还原
@@ -258,13 +277,15 @@
         tEl.addEventListener('click', () => selectForReplace('standing', i, t));
         dom.standingArea.appendChild(tEl);
       } else {
-        const slot = makeEmptySlot('md');
         const isActive = S.replacing?.area === 'standing' && S.replacing?.index === i;
         if (isActive) {
+          const slot = makeEmptySlot('md');
           slot.classList.add('hc-replacing');
-          slot.addEventListener('click', cancelReplace); // 点空槽取消
+          slot.addEventListener('click', cancelReplace);
+          dom.standingArea.appendChild(slot);
+        } else {
+          dom.standingArea.appendChild(makeTileRaw('X.svg', 'md'));
         }
-        dom.standingArea.appendChild(slot);
       }
     }
     const filled = S.standing.filter(Boolean).length;
@@ -354,6 +375,73 @@
     }
   }
 
+  // 必然门清番种：这些牌型结构上不允许副露，故自摸时只计不求人，不额外追加门前清
+  const NECESSARILY_CONCEALED_FANS = new Set([
+    '十三幺', '七对子', '连七对', '七星不靠', '全不靠', '九莲宝灯', '四暗刻单骑',
+  ]);
+
+  // ─── 村规后处理 ───────────────────────────────────────────────
+  function applyVillageRules(result) {
+    const fans = [...result.fans];
+
+    // 村规1：门清自摸 → 不求人（2番）+ 门前清（2番）并列计算
+    // 必然门清番种（十三幺/七对子等）只计不求人，不追加门前清
+    if (S.selfDrawn && S.melds.length === 0) {
+      // 1a. 必然门清番种：WASM给"非门清自摸和"(1番)时，升级为不求人(2番)
+      const nonMenIdx = fans.findIndex(f => f.name === '非门清自摸和');
+      if (nonMenIdx !== -1) fans[nonMenIdx] = { ...fans[nonMenIdx], name: '不求人' };
+
+      // 1b. 有不求人时额外追加门前清（2番），但必然门清牌型除外
+      const hasBuQiuRen = fans.some(f => f.name === '不求人');
+      const hasMenQian  = fans.some(f => f.name === '门前清');
+      const isNecessarilyConcealed = fans.some(f => NECESSARILY_CONCEALED_FANS.has(f.name));
+      if (hasBuQiuRen && !hasMenQian && !isNecessarilyConcealed) {
+        fans.push({ fan: 2, count: 1, value: 2, name: '门前清' });
+      }
+    }
+
+    // 村规2：天和 / 地和 / 人和（手动勾选，排斥门前清/门清自摸和）
+    const specialFan = S.fan_tian_he ? '天和' : S.fan_di_he ? '地和' : S.fan_ren_he ? '人和' : null;
+    if (specialFan) {
+      const excluded = new Set(['门前清', '不求人', '非门清自摸和', '天和', '地和', '人和']);
+      const kept = fans.filter(f => !excluded.has(f.name));
+      const entry = FANS_DATA?.find(f => f.name === specialFan);
+      kept.unshift({ fan: entry?.fan ?? 88, count: 1, value: entry?.fan ?? 88, name: specialFan });
+      return { ...result, fans: kept };
+    }
+
+    // 村规3：月见花开 = 杠上开花 + 海底捞月同时成立
+    if (S.kongWin && S.wallLast) {
+      const hasKong = fans.some(f => f.name === '杠上开花');
+      const hasSea  = fans.some(f => f.name === '海底捞月');
+      if (hasKong && hasSea) {
+        const kept = fans.filter(f => f.name !== '杠上开花' && f.name !== '海底捞月');
+        kept.push({ fan: 32, count: 1, value: 32, name: '月见花开' });
+        return { ...result, fans: kept };
+      }
+    }
+
+    return fans === result.fans ? result : { ...result, fans };
+  }
+
+  // ─── 四暗刻单骑检测 ───────────────────────────────────────────
+  // 条件：无副露 + WASM检测到四暗刻 + 和牌张恰好是雀头（立牌中仅1张同码牌）
+  // 必须在 applyVillageRules 之前调用，以便村规能识别 NECESSARILY_CONCEALED_FANS
+  function detectSiAnKeShanJi(result) {
+    if (S.melds.length > 0) return result;
+    if (!result.fans.some(f => f.name === '四暗刻')) return result;
+    const winCode = S.winTile.code;
+    const matchCount = S.standing.filter(t => t && t.code === winCode).length;
+    if (matchCount !== 1) return result;   // 双碰等牌型排除
+
+    const excluded = new Set(['四暗刻', '门前清', '听单张', '四暗刻单骑']);
+    const kept = result.fans.filter(f => !excluded.has(f.name));
+    const entry = FANS_DATA?.find(f => f.name === '四暗刻单骑');
+    const fanVal = entry?.fan ?? 88;
+    kept.unshift({ fan: fanVal, count: 1, value: fanVal, name: '四暗刻单骑' });
+    return { ...result, fans: kept };
+  }
+
   // ─── 九莲宝灯检测 ─────────────────────────────────────────────
   // 基础型：同一花色 1112345678999（13张），可和该花色任意一张
   function detectJiuLian(result) {
@@ -395,9 +483,8 @@
 
   function applyFansJsValues(result) {
     const fans = result.fans.map(f => {
-      const canonicalName = (typeof WASM_NAME_MAP !== 'undefined' && WASM_NAME_MAP[f.name]) || f.name;
-      const v = _fanValueMap.get(canonicalName);
-      if (v === undefined) console.warn(`[fans.js 未命中] WASM 番种名 "${f.name}" 在 fans.js 中找不到对应条目`);
+      const v = _fanValueMap.get(f.name);
+      if (v === undefined) console.warn(`[fans.js 未命中] 番种名 "${f.name}" 在 fans.js 中找不到对应条目`);
       return v !== undefined ? { ...f, value: v } : f;
     });
     const total = fans.reduce((s, f) => s + f.value * f.count, 0);
@@ -419,14 +506,26 @@
       prevalentWind: S.prevalentWind, seatWind: S.seatWind,
     });
     if (!result.error) {
-      // 把 WASM 固定名称映射到我们的广式命名
-      // 妙手回春（末张自摸）→ 海底捞月；海底捞月（末张放炮）→ 河底捞月
+      // Step 1: 广式命名修正（依赖运行时状态，必须先做）
+      // 妙手回春（末张自摸）→ 海底捞月；有副露自摸末张 → 河底捞月
       const rename = { '妙手回春': '海底捞月' };
       if (S.riverLast) rename['海底捞月'] = '河底捞月';
       result = {
         ...result,
         fans: result.fans.map(f => rename[f.name] ? { ...f, name: rename[f.name] } : f),
       };
+      // Step 2: 应用 WASM_NAME_MAP（将 WASM 原始名统一为 fans.js 规范名）
+      // 必须在 applyVillageRules 之前执行，否则排斥集合的名称匹配会失效
+      if (typeof WASM_NAME_MAP !== 'undefined') {
+        result = {
+          ...result,
+          fans: result.fans.map(f => WASM_NAME_MAP[f.name] ? { ...f, name: WASM_NAME_MAP[f.name] } : f),
+        };
+      }
+      // Step 3: 四暗刻单骑检测（必须在村规前，以便村规识别必然门清牌型）
+      result = detectSiAnKeShanJi(result);
+      // Step 4 & 5: 村规后处理、九莲宝灯检测（此时所有番名已是规范名）
+      result = applyVillageRules(result);
       result = detectJiuLian(result);
       result = applyFansJsValues(result);
     }
@@ -472,7 +571,8 @@
   // ─── 开/关页面 ─────────────────────────────────────────────────
   function open() {
     resetState();
-    ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last'].forEach(id => {
+    ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
+     'hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
       document.getElementById(id).checked = false;
     });
     document.getElementById('hc-flowers').value   = 0;
@@ -503,7 +603,9 @@
   //   ren_he:  { set: { selfDrawn: false } }   // 人和必然点炮
   //
   const FAN_CONDITION_RULES = {
-    // 村规/日麻番种 checkbox 添加到 UI 后在此补充
+    tian_he: { set: { selfDrawn: true,  lastTile: false, wallLast: false, riverLast: false } },  // 天和必然自摸，排斥和绝张/海底/河底
+    di_he:   { set: { selfDrawn: true,  wallLast: false, riverLast: false } },                   // 地和必然自摸，排斥海底/河底
+    ren_he:  { set: { selfDrawn: false, lastTile: false, wallLast: false, riverLast: false } },  // 人和必然点炮，排斥和绝张/海底/河底
   };
 
   // 条件 key → checkbox element id
@@ -563,26 +665,58 @@
     document.getElementById('hc-back').addEventListener('click', close);
     document.getElementById('hc-clear-all').addEventListener('click', () => {
       resetState();
-      ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last'].forEach(id => {
+      ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
+       'hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
         document.getElementById(id).checked = false;
       });
-      document.getElementById('hc-flowers').value = 0;
+      document.getElementById('hc-flowers').value   = 0;
+      document.getElementById('hc-prevalent').value = 0;
+      document.getElementById('hc-seat').value      = 0;
       render();
     });
     document.getElementById('hc-buffer-clear').addEventListener('click', () => { S.buffer = []; render(); });
     dom.calcBtn.addEventListener('click', () => Calculator.ready.then(doCalculate));
-    document.getElementById('hc-self-drawn').addEventListener('change', e => { S.selfDrawn  = e.target.checked; applyConditionToFans('selfDrawn',  e.target.checked); });
+    document.getElementById('hc-self-drawn').addEventListener('change', e => {
+      S.selfDrawn = e.target.checked;
+      // 自摸取消 → 海底捞月不再成立；自摸勾上 → 河底捞月不再成立
+      if (!e.target.checked && S.wallLast)  { S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false; }
+      if ( e.target.checked && S.riverLast) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
+      applyConditionToFans('selfDrawn', e.target.checked);
+    });
     document.getElementById('hc-last-tile').addEventListener('change',  e => { S.lastTile   = e.target.checked; applyConditionToFans('lastTile',   e.target.checked); });
     document.getElementById('hc-kong-win').addEventListener('change',   e => { S.kongWin    = e.target.checked; applyConditionToFans('kongWin',    e.target.checked); });
     document.getElementById('hc-wall-last').addEventListener('change',  e => {
-      S.wallLast  = e.target.checked;
-      if (e.target.checked) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
+      S.wallLast = e.target.checked;
+      // 海底捞月互斥河底捞月；海底捞月必然自摸
+      if (e.target.checked) {
+        S.riverLast = false; document.getElementById('hc-river-last').checked = false;
+        S.selfDrawn = true;  document.getElementById('hc-self-drawn').checked  = true;
+        applyConditionToFans('selfDrawn', true);
+      }
       applyConditionToFans('wallLast', e.target.checked);
     });
     document.getElementById('hc-river-last').addEventListener('change', e => {
       S.riverLast = e.target.checked;
-      if (e.target.checked) { S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false; }
+      // 河底捞月互斥海底捞月；河底捞月必然非自摸
+      if (e.target.checked) {
+        S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false;
+        S.selfDrawn = false; document.getElementById('hc-self-drawn').checked  = false;
+        applyConditionToFans('selfDrawn', false);
+      }
       applyConditionToFans('riverLast', e.target.checked);
+    });
+    ['tian_he', 'di_he', 'ren_he'].forEach(fanId => {
+      document.getElementById(`hc-fan-${fanId}`).addEventListener('change', e => {
+        S[`fan_${fanId}`] = e.target.checked;
+        if (e.target.checked) {
+          // 三者互斥
+          ['tian_he', 'di_he', 'ren_he'].filter(id => id !== fanId).forEach(id => {
+            S[`fan_${id}`] = false;
+            document.getElementById(`hc-fan-${id}`).checked = false;
+          });
+        }
+        applyFanToConditions(fanId, e.target.checked);
+      });
     });
     document.getElementById('hc-prevalent').addEventListener('change',  e => { S.prevalentWind = +e.target.value; });
     document.getElementById('hc-seat').addEventListener('change',       e => { S.seatWind      = +e.target.value; });
