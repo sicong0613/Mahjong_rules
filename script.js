@@ -33,7 +33,6 @@ function bindEvents() {
     renderAll();
   });
 
-  document.getElementById('calc-toggle').addEventListener('click', toggleCalcMode);
   document.getElementById('calc-close').addEventListener('click', toggleCalcMode);
   document.getElementById('calc-clear').addEventListener('click', () => {
     state.selected.clear();

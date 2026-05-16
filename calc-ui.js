@@ -91,7 +91,7 @@
 
   // 构建指定 SVG 文件名的牌（牌背/牌面）
   function makeTileRaw(svgFile, size) {
-    const d = el('div', `hc-tile hc-tile-${size}`);
+    const d = el('div', `hc-tile hc-tile-${size} hc-tile-np`);
     const img = document.createElement('img');
     img.src = `img/tiles/${svgFile}`;
     img.draggable = false;
@@ -279,7 +279,7 @@
       } else {
         const isActive = S.replacing?.area === 'standing' && S.replacing?.index === i;
         if (isActive) {
-          const slot = makeEmptySlot('md');
+          const slot = makeTileRaw('X.svg', 'md');
           slot.classList.add('hc-replacing');
           slot.addEventListener('click', cancelReplace);
           dom.standingArea.appendChild(slot);
@@ -298,13 +298,13 @@
       const tEl = makeTileEl(S.winTile.code, S.winTile.isRed, 'md');
       tEl.addEventListener('click', () => selectForReplace('win', 0, S.winTile));
       dom.winArea.appendChild(tEl);
-    } else {
-      const slot = makeEmptySlot('md', S.replacing?.area !== 'win');
-      if (S.replacing?.area === 'win') {
-        slot.classList.add('hc-replacing');
-        slot.addEventListener('click', cancelReplace);
-      }
+    } else if (S.replacing?.area === 'win') {
+      const slot = makeTileRaw('X.svg', 'md');
+      slot.classList.add('hc-replacing');
+      slot.addEventListener('click', cancelReplace);
       dom.winArea.appendChild(slot);
+    } else {
+      dom.winArea.appendChild(makeTileRaw('X.svg', 'md'));
     }
   }
 
