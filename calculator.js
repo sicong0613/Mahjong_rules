@@ -150,6 +150,19 @@ const Calculator = (() => {
       }
     }
 
+    // ─── 番种升格合并 ────────────────────────────────────────────────────────
+    // 大七星：七对子 + 字一色 → 大七星（88番）
+    {
+      const qiIdx = fans.findIndex(f => f.name === '七对子');
+      const ziIdx = fans.findIndex(f => f.name === '字一色');
+      if (qiIdx !== -1 && ziIdx !== -1) {
+        const [hi, lo] = qiIdx > ziIdx ? [qiIdx, ziIdx] : [ziIdx, qiIdx];
+        fans.splice(hi, 1);
+        fans.splice(lo, 1);
+        fans.push({ fan: 88, count: 1, value: 88, name: '大七星' });
+      }
+    }
+
     const total = fans.reduce((sum, f) => sum + f.value * f.count, 0);
     return { fans, total };
   }

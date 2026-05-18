@@ -43,7 +43,7 @@
       melds: [],      // [{type, tile, tiles, concealed, promoted}]
       buffer: [],     // 副露/暗杠缓冲
       replacing: null,// {area:'standing'|'win', index} | null
-      selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false,
+      selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false,
       fan_tian_he: false, fan_di_he: false, fan_ren_he: false,
       flowers: 0, prevalentWind: 0, seatWind: 0,
     };
@@ -158,6 +158,9 @@
       S.buffer.push(t);
       if (S.buffer.length === 3) flushBuffer();
     } else if (S.mode === 'minggang' || S.mode === 'angang') {
+      // 开杠前校验：立牌 + 和牌张 + 已有副露中若已存在该牌，加上杠的4张会超过上限4张
+      const existing = countAllTiles().get(`${t.code}_total`) || 0;
+      if (existing + 4 > 4) { showToast('开杠后该牌总数将超过4张，请先移除立牌区中的同种牌'); return; }
       // 单击即生成四张杠；五万/五饼/五条固定为1红3正
       const rank = t.code & 0xF;
       const suit = t.code >> 4;
@@ -238,12 +241,12 @@
 
   function updateKongWinCheckbox() {
     const hasKong = S.melds.some(m => m.type === 'kong');
-    const cb = document.getElementById('hc-kong-win');
-    cb.disabled = !hasKong;
-    if (!hasKong && S.kongWin) {
-      S.kongWin = false;
-      cb.checked = false;
-    }
+    const cbKong = document.getElementById('hc-kong-win');
+    const cbGkc  = document.getElementById('hc-gang-kai-chong');
+    cbKong.disabled = !hasKong;
+    cbGkc.disabled  = !hasKong;
+    if (!hasKong && S.kongWin)      { S.kongWin      = false; cbKong.checked = false; }
+    if (!hasKong && S.gangKaiChong) { S.gangKaiChong = false; cbGkc.checked  = false; }
   }
 
   // 点击已有牌 → 该槽清空等待重输；点击空槽 → 取消并还原
@@ -421,6 +424,17 @@
       }
     }
 
+    // 广港日：杠振 = 杠上开铳 + 河底捞鱼 → 升格32番；杠上开铳单独成立时8番
+    if (S.gangKaiChong) {
+      if (S.riverLast) {
+        // 杠振：过滤掉 WASM 给出的末张放铳番，整体替换
+        const kept = fans.filter(f => f.name !== '河底捞月' && f.name !== '海底捞月');
+        kept.push({ fan: 32, count: 1, value: 32, name: '杠振' });
+        return { ...result, fans: kept };
+      }
+      fans.push({ fan: 8, count: 1, value: 8, name: '杠上开铳' });
+    }
+
     return fans === result.fans ? result : { ...result, fans };
   }
 
@@ -467,6 +481,24 @@
     const kept = result.fans.filter(f => !excluded.has(f.name));
     const jl = { fan: 88, count: 1, value: 88, name: '九莲宝灯' };
     return { fans: [jl, ...kept], total: kept.reduce((s, f) => s + f.value * f.count, 0) + 88 };
+  }
+
+  // ─── 纯全带幺九检测 ───────────────────────────────────────────
+  // WASM 检测到全带幺（每组含幺九或字牌）且整副牌无字牌 → 升格纯全带幺九
+  // 门清 24番，有副露 16番
+  function detectChunQuanDaiYaoJiu(result) {
+    if (!result.fans.some(f => f.name === '全带幺')) return result;
+
+    const allTiles = [
+      ...S.standing.filter(Boolean),
+      S.winTile,
+      ...S.melds.flatMap(m => m.tiles),
+    ];
+    if (allTiles.some(t => t && (t.code >> 4) === 4)) return result; // 有字牌，不成立
+
+    const fans = result.fans.filter(f => f.name !== '全带幺' && f.name !== '无字');
+    fans.push({ fan: 24, count: 1, value: 24, name: '纯全带幺九' });
+    return { ...result, fans };
   }
 
   // ─── fans.js 番值覆盖 ─────────────────────────────────────────
@@ -527,6 +559,7 @@
       // Step 4 & 5: 村规后处理、九莲宝灯检测（此时所有番名已是规范名）
       result = applyVillageRules(result);
       result = detectJiuLian(result);
+      result = detectChunQuanDaiYaoJiu(result);
       result = applyFansJsValues(result);
     }
     renderResult(result);
@@ -571,7 +604,7 @@
   // ─── 开/关页面 ─────────────────────────────────────────────────
   function open() {
     resetState();
-    ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
+    ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong',
      'hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
       document.getElementById(id).checked = false;
     });
@@ -681,10 +714,24 @@
       // 自摸取消 → 海底捞月不再成立；自摸勾上 → 河底捞月不再成立
       if (!e.target.checked && S.wallLast)  { S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false; }
       if ( e.target.checked && S.riverLast) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
+      // 自摸与杠上开铳互斥
+      if (e.target.checked && S.gangKaiChong) { S.gangKaiChong = false; document.getElementById('hc-gang-kai-chong').checked = false; }
       applyConditionToFans('selfDrawn', e.target.checked);
     });
     document.getElementById('hc-last-tile').addEventListener('change',  e => { S.lastTile   = e.target.checked; applyConditionToFans('lastTile',   e.target.checked); });
-    document.getElementById('hc-kong-win').addEventListener('change',   e => { S.kongWin    = e.target.checked; applyConditionToFans('kongWin',    e.target.checked); });
+    document.getElementById('hc-kong-win').addEventListener('change',   e => {
+      S.kongWin = e.target.checked;
+      if (e.target.checked) {
+        // 杠上开花必然自摸
+        S.selfDrawn = true; document.getElementById('hc-self-drawn').checked = true;
+        applyConditionToFans('selfDrawn', true);
+        // 杠上开花与河底捞鱼互斥
+        if (S.riverLast) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
+        // 杠上开花与杠上开铳互斥
+        if (S.gangKaiChong) { S.gangKaiChong = false; document.getElementById('hc-gang-kai-chong').checked = false; }
+      }
+      applyConditionToFans('kongWin', e.target.checked);
+    });
     document.getElementById('hc-wall-last').addEventListener('change',  e => {
       S.wallLast = e.target.checked;
       // 海底捞月互斥河底捞月；海底捞月必然自摸
@@ -692,16 +739,19 @@
         S.riverLast = false; document.getElementById('hc-river-last').checked = false;
         S.selfDrawn = true;  document.getElementById('hc-self-drawn').checked  = true;
         applyConditionToFans('selfDrawn', true);
+        // 海底捞月（自摸）与杠上开铳互斥
+        if (S.gangKaiChong) { S.gangKaiChong = false; document.getElementById('hc-gang-kai-chong').checked = false; }
       }
       applyConditionToFans('wallLast', e.target.checked);
     });
     document.getElementById('hc-river-last').addEventListener('change', e => {
       S.riverLast = e.target.checked;
-      // 河底捞月互斥海底捞月；河底捞月必然非自摸
+      // 河底捞鱼互斥海底捞月；必然非自摸；与杠上开花互斥
       if (e.target.checked) {
         S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false;
         S.selfDrawn = false; document.getElementById('hc-self-drawn').checked  = false;
         applyConditionToFans('selfDrawn', false);
+        if (S.kongWin) { S.kongWin = false; document.getElementById('hc-kong-win').checked = false; }
       }
       applyConditionToFans('riverLast', e.target.checked);
     });
@@ -717,6 +767,15 @@
         }
         applyFanToConditions(fanId, e.target.checked);
       });
+    });
+    document.getElementById('hc-gang-kai-chong').addEventListener('change', e => {
+      S.gangKaiChong = e.target.checked;
+      if (e.target.checked) {
+        // 杠上开铳为非自摸放铳，与自摸/杠上开花/海底捞月互斥
+        if (S.selfDrawn) { S.selfDrawn = false; document.getElementById('hc-self-drawn').checked = false; applyConditionToFans('selfDrawn', false); }
+        if (S.kongWin)   { S.kongWin   = false; document.getElementById('hc-kong-win').checked   = false; }
+        if (S.wallLast)  { S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false; }
+      }
     });
     document.getElementById('hc-prevalent').addEventListener('change',  e => { S.prevalentWind = +e.target.value; });
     document.getElementById('hc-seat').addEventListener('change',       e => { S.seatWind      = +e.target.value; });
