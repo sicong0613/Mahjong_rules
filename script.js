@@ -6,6 +6,7 @@ const state = {
   calcMode:     false,
   selected:     new Set(),   // 计番模式中已勾选的 id
   showDlc:      false,
+  lang:         'zh',        // 'zh' | 'en'
   jumpOriginId: null,        // 跳转前的来源卡片 id
 };
 
@@ -45,6 +46,13 @@ function bindEvents() {
     state.showDlc = !state.showDlc;
     document.getElementById('dlc-toggle').textContent =
       state.showDlc ? '隐藏 DLC' : '显示 DLC';
+    renderAll();
+  });
+
+  document.getElementById('lang-toggle').addEventListener('click', () => {
+    state.lang = state.lang === 'zh' ? 'en' : 'zh';
+    document.getElementById('lang-toggle').textContent =
+      state.lang === 'zh' ? 'Eng' : '中文';
     renderAll();
   });
 
@@ -284,6 +292,7 @@ function buildCard(f) {
   card.className = 'fan-card';
   card.dataset.id = f.id;
 
+  const displayName = state.lang === 'en' && f.nameEn ? f.nameEn : f.name;
   const altText  = f.nameAlt?.length ? ` <span class="card-name-alt">/ ${f.nameAlt.join(' / ')}</span>` : '';
   const tagsHtml = f.tags.map(t =>
     `<span class="tag tag-${t}">${t}</span>`
@@ -315,7 +324,7 @@ function buildCard(f) {
     <div class="card-main">
       <div class="card-top">
         <span class="fan-badge badge-${f.fan}">${f.fan === 0 ? '立' : f.fan}</span>
-        <span class="card-name">${f.name}</span>${altText}
+        <span class="card-name" translate="no">${displayName}</span>${altText}
         <span class="card-source">${f.source}</span>
       </div>
       <p class="card-desc">${f.desc}</p>
@@ -429,7 +438,16 @@ function linkifyText(rootEl) {
       const span = document.createElement('span');
       span.className = 'term';
       span.dataset.term = match[0];
-      span.textContent = match[0];
+      span.setAttribute('translate', 'no');
+      if (state.lang === 'en') {
+        const entry = getTermMap().get(match[0]);
+        let enText = null;
+        if (entry?.type === 'fan' && entry.data.nameEn) enText = entry.data.nameEn;
+        else if (entry?.type === 'gloss') enText = GLOSSARY_TERM_EN?.[match[0]];
+        span.textContent = enText || match[0];
+      } else {
+        span.textContent = match[0];
+      }
       frag.appendChild(span);
       last = match.index + match[0].length;
     }
@@ -450,10 +468,11 @@ function showTermPopup(termEl, termName) {
   if (!entry) return;
   if (entry.type === 'fan') {
     const f = entry.data;
+    const popupName = state.lang === 'en' && f.nameEn ? f.nameEn : f.name;
     popup.innerHTML = `
       <div class="term-popup-head">
         <span class="fan-badge badge-${f.fan} term-popup-badge">${f.fan === 0 ? '立' : f.fan}</span>
-        <strong class="term-popup-name">${f.name}</strong>
+        <strong class="term-popup-name" translate="no">${popupName}</strong>
       </div>
       <p class="term-popup-desc">${f.desc}</p>
       <button class="term-popup-goto" data-id="${f.id}">→ 查看完整</button>`;

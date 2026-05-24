@@ -44,6 +44,7 @@
       buffer: [],     // 副露/暗杠缓冲
       replacing: null,// {area:'standing'|'win', index} | null
       selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false,
+      riichi: false,
       fan_tian_he: false, fan_di_he: false, fan_ren_he: false,
       flowers: 0, prevalentWind: 0, seatWind: 0,
     };
@@ -240,13 +241,17 @@
   }
 
   function updateKongWinCheckbox() {
-    const hasKong = S.melds.some(m => m.type === 'kong');
-    const cbKong = document.getElementById('hc-kong-win');
-    const cbGkc  = document.getElementById('hc-gang-kai-chong');
-    cbKong.disabled = !hasKong;
-    cbGkc.disabled  = !hasKong;
-    if (!hasKong && S.kongWin)      { S.kongWin      = false; cbKong.checked = false; }
-    if (!hasKong && S.gangKaiChong) { S.gangKaiChong = false; cbGkc.checked  = false; }
+    const hasKong     = S.melds.some(m => m.type === 'kong');
+    const hasOpenMeld = S.melds.some(m => m.type === 'chow' || m.type === 'pung' || (m.type === 'kong' && !m.concealed));
+    const cbKong   = document.getElementById('hc-kong-win');
+    const cbGkc    = document.getElementById('hc-gang-kai-chong');
+    const cbRiichi = document.getElementById('hc-riichi');
+    cbKong.disabled   = !hasKong;
+    cbGkc.disabled    = !hasKong;
+    cbRiichi.disabled = hasOpenMeld;
+    if (!hasKong     && S.kongWin)      { S.kongWin      = false; cbKong.checked   = false; }
+    if (!hasKong     && S.gangKaiChong) { S.gangKaiChong = false; cbGkc.checked    = false; }
+    if (hasOpenMeld  && S.riichi)       { S.riichi        = false; cbRiichi.checked = false; }
   }
 
   // 点击已有牌 → 该槽清空等待重输；点击空槽 → 取消并还原
@@ -561,6 +566,11 @@
       result = detectJiuLian(result);
       result = detectChunQuanDaiYaoJiu(result);
       result = applyFansJsValues(result);
+      // 立直：追加2番（与门前清并列）
+      if (S.riichi) {
+        const fans = [...result.fans, { fan: 2, count: 1, value: 2, name: '立直' }];
+        result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
+      }
     }
     renderResult(result);
   }
@@ -605,7 +615,7 @@
   function open() {
     resetState();
     ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong',
-     'hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
+     'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
       document.getElementById(id).checked = false;
     });
     document.getElementById('hc-flowers').value   = 0;
@@ -692,14 +702,19 @@
 
     renderPicker();
     dom.modeBtns.forEach(btn => btn.addEventListener('click', () => {
-      S.mode = btn.dataset.mode; S.buffer = []; S.replacing = null; render();
+      if (S.replacing) {
+        if (S.replacing.area === 'standing') S.standing[S.replacing.index] = S.replacing.savedTile;
+        else S.winTile = S.replacing.savedTile;
+        S.replacing = null;
+      }
+      S.mode = btn.dataset.mode; S.buffer = []; render();
     }));
     document.getElementById('hand-calc-btn').addEventListener('click', open);
     document.getElementById('hc-back').addEventListener('click', close);
     document.getElementById('hc-clear-all').addEventListener('click', () => {
       resetState();
       ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
-       'hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
+       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
         document.getElementById(id).checked = false;
       });
       document.getElementById('hc-flowers').value   = 0;
@@ -767,6 +782,9 @@
         }
         applyFanToConditions(fanId, e.target.checked);
       });
+    });
+    document.getElementById('hc-riichi').addEventListener('change', e => {
+      S.riichi = e.target.checked;
     });
     document.getElementById('hc-gang-kai-chong').addEventListener('change', e => {
       S.gangKaiChong = e.target.checked;
