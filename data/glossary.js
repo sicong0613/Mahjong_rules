@@ -2,16 +2,19 @@
 
 /* 术语英文名称映射（专有名词，供语言切换使用） */
 const GLOSSARY_TERM_EN = {
-  "刻子":   "Pung",
-  "顺子":   "Chow",
+  "刻子":   "Triplet",
+  "顺子":   "Sequence",
   "面子":   "Meld",
   "雀头":   "Pair",
   "将牌":   "Pair",
+
   "副露":   "Open Meld",
-  "门清":   "Concealed Hand",
-  "门前清": "Concealed Hand",
+  "门清":   "Closed Hand",
+  "门前清": "Closed Hand",
+
   "舍牌":   "Discard",
   "振听":   "Furiten",
+
   "幺九":   "Terminals and Honors",
   "字牌":   "Honor Tiles",
   "三元牌": "Dragon Tiles",
@@ -19,26 +22,35 @@ const GLOSSARY_TERM_EN = {
   "风牌":   "Wind Tiles",
   "圈风":   "Prevalent Wind",
   "门风":   "Seat Wind",
-  "暗刻":   "Concealed Pung",
-  "明刻":   "Melded Pung",
-  "杠子":   "Kong",
-  "暗杠":   "Concealed Kong",
-  "明杠":   "Melded Kong",
-  "加杠":   "Extended Kong",
-  "碰":     "Pung",
-  "吃":     "Chow",
+
+  "暗刻":   "Concealed Triplet",
+  "明刻":   "Open Triplet",
+
+  "杠子":   "Quad",
+  "暗杠":   "Concealed Kan",
+  "明杠":   "Open Kan",
+  "大明杠": "Open Kan",
+  "加杠":   "Added Kan",
+
+  "碰":     "Pon",
+  "吃":     "Chii",
+
   "听牌":   "Tenpai",
   "荣和":   "Ron",
   "自摸":   "Tsumo",
-  "单骑":   "Single Tile Wait",
-  "单吊":   "Single Tile Wait",
-  "双碰":   "Double Pung Wait",
-  "双拼":   "Double Pung Wait",
+
+  "单骑":   "Pair Wait",
+  "单吊":   "Pair Wait",
+  "双碰":   "Shanpon Wait",
+  "双拼":   "Shanpon Wait",
   "嵌张":   "Closed Wait",
   "边张":   "Edge Wait",
   "两面":   "Two-Sided Wait",
-  "杠振":   "Kong Last Discard Win",
-  "补张":   "Dead Wall Draw",
+
+  "抢杠":   "Robbing a Kan",
+  "抢杠和": "Chankan",
+  "杠振":   "After-a-Kan Discard Win",
+  "补张":   "Replacement Tile",
 };
 
 const GLOSSARY = {
@@ -48,8 +60,8 @@ const GLOSSARY = {
   "雀头":   "一对相同的牌，标准手牌必须包含的一对，又称将牌。",
   "将牌":   "即雀头，一对相同的牌，标准手牌必须包含的一对。",
   "副露":   "使用其他玩家的舍牌（吃、碰、杠）公开组成面子。副露后通常不再满足门清条件。",
-  "门清":   "全程未使用副露，所有面子均来自自摸，又称门前清。",
-  "门前清": "全程未使用副露，所有面子均来自自摸，即门清。",
+  "门清":   "未通过吃、碰或明杠打开手牌的状态；暗杠通常不破坏门清，所有面子均来自自摸，又称门前清，荣和仍可保持门清。",
+  "门前清": "即门清，未通过吃、碰或明杠打开手牌的状态。",
   "舍牌":   "玩家向牌河打出的牌，包括被吃碰的牌。",
   "振听":   "因曾打出过自己的和牌，导致无法荣和他人舍牌的状态；自摸不受限制。",
   "幺九":   "数牌中的 1 和 9（一万、九万、一饼、九饼、一索、九索）以及所有字牌的统称。",
@@ -63,8 +75,10 @@ const GLOSSARY = {
   "明刻":   "通过碰牌组成的刻子（公开展示），不计暗刻类番种。",
   "杠子":   "四张相同牌组成的特殊面子，分暗杠和明杠（加杠）。",
   "暗杠":   "持有四张相同牌时自行组成的杠，首尾两张牌面朝下不公开内容。",
-  "明杠":   "通过碰牌形成明刻后，再摸到第四张相同牌所成的杠，全部正面公开。",
-  "加杠":   "即明杠，在已有明刻基础上加入第四张相同牌。",
+  "明杠":   "公开宣告的杠，包含大明杠和加杠。",
+  "大明杠": "手中已有三张相同牌时，取得他人舍出的第四张牌组成的公开杠。",
+  "加杠":   "已有明刻后，再自摸第四张相同牌并加入该明刻形成的杠。",
+  "抢杠":   "他人进行加杠时，以其加入杠中的牌完成和牌；部分规则允许特殊情况下抢暗杠。",
   "碰":     "拿取任意玩家的舍牌，与手中两张相同牌组成明刻。",
   "吃":     "拿取上家（左侧玩家）的舍牌，与手中两张连续牌组成顺子；仅限来自上家。",
   "听牌":   "手牌差一张即可和牌的状态，也称“听”。",
