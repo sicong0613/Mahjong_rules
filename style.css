@@ -768,6 +768,32 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 }
 .hc-winds input[type=number] { width: 44px; }
 
+/* ── 宝牌行 ── */
+.hc-dora-row { display: flex; align-items: center; }
+#hc-dora-count {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: .82rem;
+  cursor: pointer;
+}
+#hc-dora-count:disabled { opacity: 0.45; cursor: default; }
+
+/* ── 立直行 ── */
+.hc-riichi-row { display: flex; align-items: center; gap: 12px; }
+#hc-riichi-type {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: .82rem;
+  cursor: pointer;
+}
+#hc-riichi-type:disabled { opacity: 0.45; cursor: default; }
+
 /* ── 计算按钮 ── */
 .hc-calc-row { display: flex; justify-content: center; padding: 4px 0; }
 .hc-calc-btn {

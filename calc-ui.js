@@ -44,7 +44,8 @@
       buffer: [],     // 副露/暗杠缓冲
       replacing: null,// {area:'standing'|'win', index} | null
       selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false,
-      riichi: false,
+      riichi: false, riichiType: 'riichi',
+      dora: 0, ippatsu: false,
       fan_tian_he: false, fan_di_he: false, fan_ren_he: false,
       flowers: 0, prevalentWind: 0, seatWind: 0,
     };
@@ -237,7 +238,38 @@
     updateModeButtons();
     updatePickerCounts();
     updateKongWinCheckbox();
+    updateDoraDropdown();
     dom.calcBtn.disabled = !S.winTile || S.standing.length === 0 || !!S.replacing;
+  }
+
+  function countRedFives() {
+    let n = 0;
+    const chk = t => { if (t?.isRed) n++; };
+    S.standing.forEach(chk);
+    chk(S.winTile);
+    S.melds.forEach(m => m.tiles.forEach(chk));
+    return n;
+  }
+
+  // 根据手牌中赤五数量自动处理宝牌勾选框与下拉框
+  function updateDoraDropdown() {
+    const redFives = countRedFives();
+    const cbDora  = document.getElementById('hc-dora');
+    const selDora = document.getElementById('hc-dora-count');
+    // 无效化低于赤五数的选项
+    Array.from(selDora.options).forEach(opt => {
+      opt.disabled = parseInt(opt.value) < redFives;
+    });
+    if (redFives > 0) {
+      // 有赤五：强制勾选且不可取消
+      cbDora.checked  = true;
+      cbDora.disabled = true;
+      selDora.disabled = false;
+      if (parseInt(selDora.value) < redFives) selDora.value = String(redFives);
+    } else {
+      cbDora.disabled = false;
+    }
+    S.dora = cbDora.checked ? parseInt(selDora.value) : 0;
   }
 
   function updateKongWinCheckbox() {
@@ -251,7 +283,21 @@
     cbRiichi.disabled = hasOpenMeld;
     if (!hasKong     && S.kongWin)      { S.kongWin      = false; cbKong.checked   = false; }
     if (!hasKong     && S.gangKaiChong) { S.gangKaiChong = false; cbGkc.checked    = false; }
-    if (hasOpenMeld  && S.riichi)       { S.riichi        = false; cbRiichi.checked = false; }
+    if (hasOpenMeld  && S.riichi) {
+      S.riichi = false; cbRiichi.checked = false;
+      document.getElementById('hc-riichi-type').disabled = true;
+      S.ippatsu = false;
+      document.getElementById('hc-ippatsu').checked = false;
+      document.getElementById('hc-ippatsu').disabled = true;
+    }
+    // 一发 requires 立直
+    const cbIppatsu = document.getElementById('hc-ippatsu');
+    if (!S.riichi) {
+      cbIppatsu.disabled = true;
+      if (S.ippatsu) { S.ippatsu = false; cbIppatsu.checked = false; }
+    } else if (!hasOpenMeld) {
+      cbIppatsu.disabled = false;
+    }
   }
 
   // 点击已有牌 → 该槽清空等待重输；点击空槽 → 取消并还原
@@ -501,9 +547,11 @@
     ];
     if (allTiles.some(t => t && (t.code >> 4) === 4)) return result; // 有字牌，不成立
 
+    // 有副露降至16番；此函数在 applyFansJsValues 之后运行，需自行计算 total
+    const fanVal = S.melds.length > 0 ? 16 : 24;
     const fans = result.fans.filter(f => f.name !== '全带幺' && f.name !== '无字');
-    fans.push({ fan: 24, count: 1, value: 24, name: '纯全带幺九' });
-    return { ...result, fans };
+    fans.push({ fan: fanVal, count: 1, value: fanVal, name: '纯全带幺九' });
+    return { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
   }
 
   // ─── fans.js 番值覆盖 ─────────────────────────────────────────
@@ -564,11 +612,35 @@
       // Step 4 & 5: 村规后处理、九莲宝灯检测（此时所有番名已是规范名）
       result = applyVillageRules(result);
       result = detectJiuLian(result);
-      result = detectChunQuanDaiYaoJiu(result);
       result = applyFansJsValues(result);
-      // 立直：追加2番（与门前清并列）
+      result = detectChunQuanDaiYaoJiu(result); // 必须在 applyFansJsValues 之后，以免自定义值被覆盖
+      // 立直系：追加番种（与门前清并列）
       if (S.riichi) {
-        const fans = [...result.fans, { fan: 2, count: 1, value: 2, name: '立直' }];
+        const RIICHI_MAP = {
+          riichi:        { name: '立直',     fan: 2  },
+          double_riichi: { name: '二立直',   fan: 16 },
+          open_riichi:   { name: '明牌立直', fan: 48 },
+        };
+        // 石上三年：二立直 + 海底/河底 → 升格48番，排斥底部番
+        if (S.riichiType === 'double_riichi' && (S.wallLast || S.riverLast)) {
+          const bottomName = S.wallLast ? '海底捞月' : '河底捞月';
+          const fans = result.fans.filter(f => f.name !== bottomName);
+          fans.push({ fan: 48, count: 1, value: 48, name: '石上三年' });
+          result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
+        } else {
+          const r = RIICHI_MAP[S.riichiType] ?? RIICHI_MAP.riichi;
+          const fans = [...result.fans, { fan: r.fan, count: 1, value: r.fan, name: r.name }];
+          result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
+        }
+      }
+      // 一发（立直后一巡内胡牌，与自摸互斥）
+      if (S.ippatsu) {
+        const fans = [...result.fans, { fan: 2, count: 1, value: 2, name: '一发' }];
+        result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
+      }
+      // 宝牌（每张 1 番）
+      if (S.dora > 0) {
+        const fans = [...result.fans, { fan: 1, count: S.dora, value: S.dora, name: '宝牌' }];
         result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
       }
     }
@@ -615,9 +687,14 @@
   function open() {
     resetState();
     ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong',
-     'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
-      document.getElementById(id).checked = false;
+     'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
+      const el = document.getElementById(id); el.checked = false; el.disabled = false;
     });
+    const riichiTypeSel = document.getElementById('hc-riichi-type');
+    riichiTypeSel.value = 'riichi'; riichiTypeSel.disabled = true;
+    const doraCountSel = document.getElementById('hc-dora-count');
+    doraCountSel.value = '1'; doraCountSel.disabled = true;
+    document.getElementById('hc-ippatsu').disabled = true;
     document.getElementById('hc-flowers').value   = 0;
     document.getElementById('hc-prevalent').value = 0;
     document.getElementById('hc-seat').value      = 0;
@@ -714,9 +791,14 @@
     document.getElementById('hc-clear-all').addEventListener('click', () => {
       resetState();
       ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
-       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he'].forEach(id => {
-        document.getElementById(id).checked = false;
+       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
+        const el = document.getElementById(id); el.checked = false; el.disabled = false;
       });
+      const riichiTypeSel = document.getElementById('hc-riichi-type');
+      riichiTypeSel.value = 'riichi'; riichiTypeSel.disabled = true;
+      const doraCountSel = document.getElementById('hc-dora-count');
+      doraCountSel.value = '1'; doraCountSel.disabled = true;
+      document.getElementById('hc-ippatsu').disabled = true;
       document.getElementById('hc-flowers').value   = 0;
       document.getElementById('hc-prevalent').value = 0;
       document.getElementById('hc-seat').value      = 0;
@@ -731,6 +813,8 @@
       if ( e.target.checked && S.riverLast) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
       // 自摸与杠上开铳互斥
       if (e.target.checked && S.gangKaiChong) { S.gangKaiChong = false; document.getElementById('hc-gang-kai-chong').checked = false; }
+      // 自摸与一发互斥
+      if (e.target.checked && S.ippatsu) { S.ippatsu = false; document.getElementById('hc-ippatsu').checked = false; }
       applyConditionToFans('selfDrawn', e.target.checked);
     });
     document.getElementById('hc-last-tile').addEventListener('change',  e => { S.lastTile   = e.target.checked; applyConditionToFans('lastTile',   e.target.checked); });
@@ -785,6 +869,35 @@
     });
     document.getElementById('hc-riichi').addEventListener('change', e => {
       S.riichi = e.target.checked;
+      const sel = document.getElementById('hc-riichi-type');
+      sel.disabled = !e.target.checked;
+      const cbIppatsu = document.getElementById('hc-ippatsu');
+      if (!e.target.checked) {
+        sel.value = 'riichi'; S.riichiType = 'riichi';
+        S.ippatsu = false; cbIppatsu.checked = false; cbIppatsu.disabled = true;
+      } else {
+        cbIppatsu.disabled = false;
+      }
+    });
+    document.getElementById('hc-riichi-type').addEventListener('change', e => {
+      S.riichiType = e.target.value;
+    });
+    document.getElementById('hc-dora').addEventListener('change', e => {
+      const selDora = document.getElementById('hc-dora-count');
+      selDora.disabled = !e.target.checked;
+      S.dora = e.target.checked ? parseInt(selDora.value) : 0;
+    });
+    document.getElementById('hc-dora-count').addEventListener('change', e => {
+      if (document.getElementById('hc-dora').checked) S.dora = parseInt(e.target.value);
+    });
+    document.getElementById('hc-ippatsu').addEventListener('change', e => {
+      S.ippatsu = e.target.checked;
+      // 一发与自摸互斥
+      if (e.target.checked && S.selfDrawn) {
+        S.selfDrawn = false;
+        document.getElementById('hc-self-drawn').checked = false;
+        applyConditionToFans('selfDrawn', false);
+      }
     });
     document.getElementById('hc-gang-kai-chong').addEventListener('change', e => {
       S.gangKaiChong = e.target.checked;

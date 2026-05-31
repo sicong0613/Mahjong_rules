@@ -83,7 +83,6 @@
         <label class="hc-check"><input type="checkbox" id="hc-gang-kai-chong"> 杠上开铳</label>
         <label class="hc-check"><input type="checkbox" id="hc-wall-last"> 海底捞月</label>
         <label class="hc-check"><input type="checkbox" id="hc-river-last"> 河底捞鱼</label>
-        <label class="hc-check"><input type="checkbox" id="hc-riichi"> 立直</label>
         <label class="hc-check"><input type="checkbox" id="hc-fan-tian_he"> 天和</label>
         <label class="hc-check"><input type="checkbox" id="hc-fan-di_he"> 地和</label>
         <label class="hc-check"><input type="checkbox" id="hc-fan-ren_he"> 人和</label>
@@ -93,6 +92,41 @@
         <label>圈风 <select id="hc-prevalent"><option value="0">东</option><option value="1">南</option><option value="2">西</option><option value="3">北</option></select></label>
         <label>门风 <select id="hc-seat"><option value="0">东</option><option value="1">南</option><option value="2">西</option><option value="3">北</option></select></label>
         <label>花牌 <input type="number" id="hc-flowers" min="0" max="8" value="0"></label>
+      </div>
+
+      <div class="hc-section hc-dora-row">
+        <label class="hc-check">
+          <input type="checkbox" id="hc-dora">
+          宝牌
+          <select id="hc-dora-count" disabled>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+          </select>
+          张
+        </label>
+      </div>
+
+      <div class="hc-section hc-riichi-row">
+        <label class="hc-check">
+          <input type="checkbox" id="hc-riichi">
+          <select id="hc-riichi-type" disabled>
+            <option value="riichi">立直</option>
+            <option value="double_riichi">二立直</option>
+            <option value="open_riichi">明牌立直</option>
+          </select>
+        </label>
+        <label class="hc-check">
+          <input type="checkbox" id="hc-ippatsu" disabled>
+          一发
+        </label>
       </div>
 
       <div class="hc-section hc-calc-row">
