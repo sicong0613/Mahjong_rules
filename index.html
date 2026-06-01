@@ -50,54 +50,54 @@
   <!-- 手牌计番页面 -->
   <div id="hand-calc-page" class="hc-page hidden">
     <div class="hc-topbar">
-      <button id="hc-back" class="hc-btn-ghost">← 返回</button>
-      <span class="hc-title">手牌计番</span>
-      <button id="hc-clear-all" class="hc-btn-ghost">清空</button>
+      <button id="hc-back" class="hc-btn-ghost" data-i18n="← 返回">← 返回</button>
+      <span class="hc-title" data-i18n="手牌计番">手牌计番</span>
+      <button id="hc-clear-all" class="hc-btn-ghost" data-i18n="清空">清空</button>
     </div>
 
     <div class="hc-content">
       <div class="hc-section">
-        <div class="hc-section-label">立牌 <span id="hc-standing-count">0/13</span></div>
+        <div class="hc-section-label"><span data-i18n="立牌">立牌</span> <span id="hc-standing-count">0/13</span></div>
         <div id="hc-standing-area" class="hc-tile-row"></div>
       </div>
 
       <div class="hc-section hc-win-row">
-        <div class="hc-section-label">和牌张</div>
+        <div class="hc-section-label" data-i18n="和牌张">和牌张</div>
         <div id="hc-win-area" class="hc-tile-row"></div>
       </div>
 
       <div class="hc-section">
-        <div class="hc-section-label">副露</div>
+        <div class="hc-section-label" data-i18n="副露">副露</div>
         <div id="hc-meld-area" class="hc-meld-row"></div>
       </div>
 
       <div class="hc-section hidden" id="hc-buffer-section">
-        <div class="hc-section-label"><span id="hc-buffer-label">组合中 (0/3)</span> <button id="hc-buffer-clear" class="hc-btn-ghost hc-btn-xs">取消</button></div>
+        <div class="hc-section-label"><span id="hc-buffer-label">组合中 (0/3)</span> <button id="hc-buffer-clear" class="hc-btn-ghost hc-btn-xs" data-i18n="取消">取消</button></div>
         <div id="hc-buffer-area" class="hc-tile-row"></div>
       </div>
 
       <div class="hc-section hc-settings">
-        <label class="hc-check"><input type="checkbox" id="hc-self-drawn"> 自摸</label>
-        <label class="hc-check"><input type="checkbox" id="hc-last-tile"> 和绝张</label>
-        <label class="hc-check"><input type="checkbox" id="hc-kong-win"> 杠上开花</label>
-        <label class="hc-check"><input type="checkbox" id="hc-gang-kai-chong"> 杠上开铳</label>
-        <label class="hc-check"><input type="checkbox" id="hc-wall-last"> 海底捞月</label>
-        <label class="hc-check"><input type="checkbox" id="hc-river-last"> 河底捞鱼</label>
-        <label class="hc-check"><input type="checkbox" id="hc-fan-tian_he"> 天和</label>
-        <label class="hc-check"><input type="checkbox" id="hc-fan-di_he"> 地和</label>
-        <label class="hc-check"><input type="checkbox" id="hc-fan-ren_he"> 人和</label>
+        <label class="hc-check"><input type="checkbox" id="hc-self-drawn"> <span data-i18n="自摸">自摸</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-last-tile"> <span data-i18n="和绝张">和绝张</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-kong-win"> <span data-i18n="杠上开花">杠上开花</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-gang-kai-chong"> <span data-i18n="杠上开铳">杠上开铳</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-wall-last"> <span data-i18n="海底捞月">海底捞月</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-river-last"> <span data-i18n="河底捞鱼">河底捞鱼</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-fan-tian_he"> <span data-i18n="天和">天和</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-fan-di_he"> <span data-i18n="地和">地和</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-fan-ren_he"> <span data-i18n="人和">人和</span></label>
       </div>
 
       <div class="hc-section hc-winds">
-        <label>圈风 <select id="hc-prevalent"><option value="0">东</option><option value="1">南</option><option value="2">西</option><option value="3">北</option></select></label>
-        <label>门风 <select id="hc-seat"><option value="0">东</option><option value="1">南</option><option value="2">西</option><option value="3">北</option></select></label>
-        <label>花牌 <input type="number" id="hc-flowers" min="0" max="8" value="0"></label>
+        <label><span data-i18n="圈风">圈风</span> <select id="hc-prevalent"><option value="0" data-i18n="东">东</option><option value="1" data-i18n="南">南</option><option value="2" data-i18n="西">西</option><option value="3" data-i18n="北">北</option></select></label>
+        <label><span data-i18n="门风">门风</span> <select id="hc-seat"><option value="0" data-i18n="东">东</option><option value="1" data-i18n="南">南</option><option value="2" data-i18n="西">西</option><option value="3" data-i18n="北">北</option></select></label>
+        <label><span data-i18n="花牌">花牌</span> <input type="number" id="hc-flowers" min="0" max="8" value="0"></label>
       </div>
 
       <div class="hc-section hc-dora-row">
         <label class="hc-check">
           <input type="checkbox" id="hc-dora">
-          宝牌
+          <span data-i18n="宝牌">宝牌</span>
           <select id="hc-dora-count" disabled>
             <option value="1">1</option>
             <option value="2">2</option>
@@ -110,7 +110,7 @@
             <option value="9">9</option>
             <option value="10">10</option>
           </select>
-          张
+          <span data-i18n="张">张</span>
         </label>
       </div>
 
@@ -118,19 +118,19 @@
         <label class="hc-check">
           <input type="checkbox" id="hc-riichi">
           <select id="hc-riichi-type" disabled>
-            <option value="riichi">立直</option>
-            <option value="double_riichi">二立直</option>
-            <option value="open_riichi">明牌立直</option>
+            <option value="riichi" data-i18n="立直">立直</option>
+            <option value="double_riichi" data-i18n="二立直">二立直</option>
+            <option value="open_riichi" data-i18n="明牌立直">明牌立直</option>
           </select>
         </label>
         <label class="hc-check">
           <input type="checkbox" id="hc-ippatsu" disabled>
-          一发
+          <span data-i18n="一发">一发</span>
         </label>
       </div>
 
       <div class="hc-section hc-calc-row">
-        <button id="hc-calc-btn" class="hc-calc-btn" disabled>计 算</button>
+        <button id="hc-calc-btn" class="hc-calc-btn" disabled data-i18n="计 算">计 算</button>
       </div>
 
       <div id="hc-result" class="hc-result hidden"></div>
@@ -138,10 +138,10 @@
 
     <div class="hc-bottom">
       <div class="hc-mode-row">
-        <button class="hc-mode-btn active" data-mode="standing">立牌</button>
-        <button class="hc-mode-btn" data-mode="meld">吃/碰</button>
-        <button class="hc-mode-btn" data-mode="minggang">明杠</button>
-        <button class="hc-mode-btn" data-mode="angang">暗杠</button>
+        <button class="hc-mode-btn active" data-mode="standing" data-i18n="立牌">立牌</button>
+        <button class="hc-mode-btn" data-mode="meld" data-i18n="吃/碰">吃/碰</button>
+        <button class="hc-mode-btn" data-mode="minggang" data-i18n="明杠">明杠</button>
+        <button class="hc-mode-btn" data-mode="angang" data-i18n="暗杠">暗杠</button>
       </div>
       <div id="hc-picker" class="hc-picker"></div>
     </div>

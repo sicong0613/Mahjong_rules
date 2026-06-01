@@ -110,7 +110,7 @@
   // ─── 选牌器渲染 ───────────────────────────────────────────────
   function renderPicker() {
     dom.picker.innerHTML = '';
-    for (const row of PICKER_ROWS) {
+    PICKER_ROWS.forEach((row, ri) => {
       const rowEl = el('div', 'hc-picker-row');
       for (const td of row) {
         const t = makeTileEl(td.code, td.isRed, 'lg');
@@ -120,8 +120,16 @@
         t.addEventListener('click', () => onPickerClick(td));
         rowEl.appendChild(t);
       }
+      // 退格键放在最后一行（字牌行）的末尾
+      if (ri === PICKER_ROWS.length - 1) {
+        const bsBtn = el('button', 'hc-backspace-key');
+        bsBtn.textContent = '⌫';
+        bsBtn.title = '退格';
+        bsBtn.addEventListener('click', backspace);
+        rowEl.appendChild(bsBtn);
+      }
       dom.picker.appendChild(rowEl);
-    }
+    });
   }
 
   // 更新选牌器中已达上限的牌（变暗禁用）
@@ -313,6 +321,30 @@
     render();
   }
 
+  function backspace() {
+    if (S.replacing) {
+      const { area, index } = S.replacing;
+      S.replacing = null;
+      if (area === 'standing') {
+        // 删除选中槽（此时为 null），右边的牌自动归中
+        S.standing.splice(index, 1);
+      } else {
+        // 和牌张被选中时，直接清除
+        S.winTile = null;
+      }
+    } else {
+      // 无选中：优先删和牌张，和牌张空时再删立牌区最右边的牌
+      if (S.winTile) {
+        S.winTile = null;
+      } else if (S.standing.length > 0) {
+        S.standing.pop();
+      } else {
+        return;
+      }
+    }
+    render();
+  }
+
   function cancelReplace() {
     if (!S.replacing) return;
     if (S.replacing.area === 'standing') S.standing[S.replacing.index] = S.replacing.savedTile;
@@ -383,13 +415,15 @@
 
       const ctrl = el('div', 'hc-meld-ctrl');
       const lbl = el('span', 'hc-meld-lbl');
-      lbl.textContent = meld.type === 'chow' ? '吃' : meld.type === 'pung' ? '碰' :
-                        meld.concealed ? '暗杠' : '明杠';
+      const isEn = appLang() === 'en';
+      lbl.textContent = isEn
+        ? (meld.type === 'chow' ? 'Chow' : meld.type === 'pung' ? 'Pung' : meld.concealed ? 'Cls.Kong' : 'Opn.Kong')
+        : (meld.type === 'chow' ? '吃' : meld.type === 'pung' ? '碰' : meld.concealed ? '暗杠' : '明杠');
       ctrl.appendChild(lbl);
 
       if (meld.type === 'kong') {
         const b = el('button', 'hc-btn-sm');
-        b.textContent = meld.concealed ? '暗' : '明';
+        b.textContent = isEn ? (meld.concealed ? 'Cls' : 'Opn') : (meld.concealed ? '暗' : '明');
         b.onclick = () => toggleConceal(i); ctrl.appendChild(b);
       }
       const rm = el('button', 'hc-btn-sm hc-btn-del'); rm.textContent = '✕';
@@ -405,7 +439,9 @@
     dom.bufferSection.classList.toggle('hidden', !show);
     if (!show) return;
     const needed = (S.mode === 'minggang' || S.mode === 'angang') ? 4 : 3;
-    dom.bufferLabel.textContent = `组合中 (${S.buffer.length}/${needed})`;
+    dom.bufferLabel.textContent = appLang() === 'en'
+      ? `Building (${S.buffer.length}/${needed})`
+      : `组合中 (${S.buffer.length}/${needed})`;
     dom.bufferArea.innerHTML = '';
     for (const t of S.buffer) dom.bufferArea.appendChild(makeTileEl(t.code, t.isRed, 'md'));
   }
@@ -647,6 +683,13 @@
     renderResult(result);
   }
 
+  function appLang() { return document.documentElement.dataset.lang || 'zh'; }
+
+  function fanDisplayName(zhName) {
+    if (appLang() !== 'en') return zhName;
+    return (typeof window.hcLookupEn === 'function' && window.hcLookupEn(zhName)) || zhName;
+  }
+
   function renderResult(result) {
     dom.result.innerHTML = '';
     dom.result.classList.remove('hidden');
@@ -654,17 +697,19 @@
       const e = el('p', 'hc-err'); e.textContent = result.error;
       dom.result.appendChild(e); return;
     }
+    const isEn = appLang() === 'en';
     const total = el('div', 'hc-result-total');
-    total.textContent = `合计 ${result.total} 番`;
+    total.textContent = isEn ? `Total ${result.total} fan` : `合计 ${result.total} 番`;
     dom.result.appendChild(total);
     if (result.fans.length === 0) {
-      const none = el('p', 'hc-result-none'); none.textContent = '无番和';
+      const none = el('p', 'hc-result-none');
+      none.textContent = isEn ? 'No scoring fans' : '无番和';
       dom.result.appendChild(none); return;
     }
     const list = el('div', 'hc-result-list');
     for (const f of result.fans) {
       const row = el('div', 'hc-result-row');
-      const name = el('span', 'hc-result-name'); name.textContent = f.name;
+      const name = el('span', 'hc-result-name'); name.textContent = fanDisplayName(f.name);
       const val  = el('span', 'hc-result-val');  val.textContent  = `×${f.count}　${f.value} 番`;
       row.appendChild(name); row.appendChild(val); list.appendChild(row);
     }

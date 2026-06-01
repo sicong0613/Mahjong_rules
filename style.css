@@ -871,6 +871,23 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 
 /* 选牌器 */
 .hc-picker { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.hc-backspace-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 44px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background .15s;
+  vertical-align: top;
+}
+.hc-backspace-key:active { background: var(--border); }
 .hc-picker-row { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
 
 /* ── Toast ── */
@@ -905,6 +922,7 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
   .hc-tile-md.hc-empty { width: 42px; height: 54.5px; }
   .hc-tile-lg.hc-tile-np { width: 42px; height: 54.5px; }
   .hc-tile-md.hc-tile-np { width: 42px; height: 54.5px; }
+  .hc-backspace-key { width: 42px; height: 54.5px; }
   .hc-picker        { display: grid; grid-template-columns: auto auto; justify-content: center; gap: 6px 12px; align-items: start; }
   .hc-picker-row    { gap: 6px; justify-content: center; }
 

@@ -51,6 +51,14 @@ const GLOSSARY_TERM_EN = {
   "抢杠和": "Chankan",
   "杠振":   "After-a-Kan Discard Win",
   "补张":   "Replacement Tile",
+
+  // 手牌计番 UI 补充术语
+  "立牌":    "Hand",
+  "和牌张":  "Win Tile",
+  "花牌":    "Flowers",
+  "河底捞鱼": "Last Discard Win",
+  "河底捞月": "Last Discard Win",
+  "东": "East", "南": "South", "西": "West", "北": "North",
 };
 
 const GLOSSARY = {

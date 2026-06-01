@@ -53,7 +53,9 @@ function bindEvents() {
     state.lang = state.lang === 'zh' ? 'en' : 'zh';
     document.getElementById('lang-toggle').textContent =
       state.lang === 'zh' ? 'Eng' : '中文';
+    document.documentElement.dataset.lang = state.lang;
     renderAll();
+    updateCalcI18n();
   });
 
   document.getElementById('clear-filters').addEventListener('click', () => {
@@ -584,6 +586,40 @@ function updateCalcBar() {
   });
   $calcCount.textContent = state.selected.size;
   $calcTotal.textContent = total;
+}
+
+/* ── 计番 UI 国际化 ─────────────────────────────────── */
+// 纯 UI 文本（不在 fans.js / GLOSSARY_TERM_EN 里的词条）
+const HC_UI_EN = {
+  '← 返回': '← Back',
+  '手牌计番': 'Hand Calc',
+  '清空': 'Clear',
+  '取消': 'Cancel',
+  '计 算': 'Calculate',
+  '吃/碰': 'Chow/Pung',
+  '张': 'tiles',
+  '合计': 'Total',
+  '无番和': 'No scoring fans',
+};
+
+// 通用翻译查找：fans.js nameEn → GLOSSARY_TERM_EN → HC_UI_EN → null
+function lookupEn(zh) {
+  if (typeof FANS_DATA !== 'undefined') {
+    const f = FANS_DATA.find(e => e.name === zh || (e.nameAlt && e.nameAlt.includes(zh)));
+    if (f?.nameEn) return f.nameEn;
+  }
+  if (typeof GLOSSARY_TERM_EN !== 'undefined' && GLOSSARY_TERM_EN[zh]) return GLOSSARY_TERM_EN[zh];
+  return HC_UI_EN[zh] || null;
+}
+window.hcLookupEn = lookupEn;
+
+// 更新算番界面中所有 [data-i18n] 元素
+function updateCalcI18n() {
+  const isEn = state.lang === 'en';
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    el.textContent = isEn ? (lookupEn(key) || key) : key;
+  });
 }
 
 /* ── 启动 ────────────────────────────────────────────── */
