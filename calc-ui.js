@@ -676,7 +676,7 @@
       }
       // 宝牌（每张 1 番）
       if (S.dora > 0) {
-        const fans = [...result.fans, { fan: 1, count: S.dora, value: S.dora, name: '宝牌' }];
+        const fans = [...result.fans, { fan: 1, count: S.dora, value: 1, name: '宝牌' }];
         result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
       }
     }
