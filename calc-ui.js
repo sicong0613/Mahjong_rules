@@ -177,7 +177,7 @@
       const isSuitFive = rank === 5 && suit >= 1 && suit <= 3;
       const kongTiles = isSuitFive
         ? [{ code: t.code, isRed: false }, { code: t.code, isRed: false },
-           { code: t.code, isRed: false }, { code: t.code, isRed: true  }]
+           { code: t.code, isRed: true  }, { code: t.code, isRed: false }]
         : [{...t}, {...t}, {...t}, {...t}];
       S.melds.push({
         type: 'kong', tile: t.code,
@@ -447,13 +447,12 @@
   }
 
   function updateModeButtons() {
-    const remaining = maxStanding();
+    const remaining = maxStanding() - S.standing.filter(Boolean).length;
     let needReset = false;
     dom.modeBtns.forEach(b => {
       const mode = b.dataset.mode;
       let disabled = false;
-      if      (mode === 'meld')                        disabled = remaining < 3;
-      else if (mode === 'minggang' || mode === 'angang') disabled = remaining < 4;
+      if (mode === 'meld' || mode === 'minggang' || mode === 'angang') disabled = remaining < 3;
       b.disabled = disabled;
       b.classList.toggle('active', mode === S.mode);
       if (disabled && mode === S.mode) needReset = true;
@@ -526,10 +525,10 @@
   }
 
   // ─── 四暗刻单骑检测 ───────────────────────────────────────────
-  // 条件：无副露 + WASM检测到四暗刻 + 和牌张恰好是雀头（立牌中仅1张同码牌）
+  // 条件：无公开副露（暗杠不破坏门清）+ WASM检测到四暗刻 + 和牌张恰好是雀头（立牌中仅1张同码牌）
   // 必须在 applyVillageRules 之前调用，以便村规能识别 NECESSARILY_CONCEALED_FANS
   function detectSiAnKeShanJi(result) {
-    if (S.melds.length > 0) return result;
+    if (S.melds.some(m => !m.concealed)) return result;
     if (!result.fans.some(f => f.name === '四暗刻')) return result;
     const winCode = S.winTile.code;
     const matchCount = S.standing.filter(t => t && t.code === winCode).length;
