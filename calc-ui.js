@@ -45,7 +45,7 @@
       replacing: null,// {area:'standing'|'win', index} | null
       selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false,
       riichi: false, riichiType: 'riichi',
-      dora: 0, ippatsu: false,
+      dora: 0, ippatsu: false, prevRedFives: 0,
       fan_tian_he: false, fan_di_he: false, fan_ren_he: false,
       flowers: 0, prevalentWind: 0, seatWind: 0,
     };
@@ -264,19 +264,38 @@
     const redFives = countRedFives();
     const cbDora  = document.getElementById('hc-dora');
     const selDora = document.getElementById('hc-dora-count');
+    const delta   = redFives - S.prevRedFives; // >0 增加，<0 减少
+
     // 无效化低于赤五数的选项
     Array.from(selDora.options).forEach(opt => {
       opt.disabled = parseInt(opt.value) < redFives;
     });
+
     if (redFives > 0) {
-      // 有赤五：强制勾选且不可取消
       cbDora.checked  = true;
       cbDora.disabled = true;
       selDora.disabled = false;
-      if (parseInt(selDora.value) < redFives) selDora.value = String(redFives);
+      if (delta < 0) {
+        // 赤五减少：宝牌数同步减少，但不低于剩余赤五数
+        selDora.value = String(Math.max(parseInt(selDora.value) + delta, redFives));
+      } else if (parseInt(selDora.value) < redFives) {
+        selDora.value = String(redFives);
+      }
     } else {
       cbDora.disabled = false;
+      if (delta < 0 && cbDora.checked) {
+        // 赤五全部删除：减去对应宝牌贡献
+        const newVal = parseInt(selDora.value) + delta;
+        if (newVal <= 0) {
+          cbDora.checked   = false;
+          selDora.disabled = true;
+        } else {
+          selDora.value = String(newVal);
+        }
+      }
     }
+
+    S.prevRedFives = redFives;
     S.dora = cbDora.checked ? parseInt(selDora.value) : 0;
   }
 
@@ -832,6 +851,13 @@
     }));
     document.getElementById('hand-calc-btn').addEventListener('click', open);
     document.getElementById('hc-back').addEventListener('click', close);
+    document.getElementById('hc-kb-toggle').addEventListener('click', () => {
+      const bottom = document.querySelector('.hc-bottom');
+      const btn    = document.getElementById('hc-kb-toggle');
+      const hidden = bottom.classList.toggle('hidden');
+      btn.classList.toggle('kb-hidden', hidden);
+      btn.title = hidden ? '展开键盘' : '收起键盘';
+    });
     document.getElementById('hc-clear-all').addEventListener('click', () => {
       resetState();
       ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
