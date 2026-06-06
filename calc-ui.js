@@ -45,7 +45,7 @@
       replacing: null,// {area:'standing'|'win', index} | null
       selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false,
       riichi: false, riichiType: 'riichi',
-      dora: 0, ippatsu: false, prevRedFives: 0,
+      dora: 0, ippatsu: false, prevRedFives: 0, dealerWin: false,
       fan_tian_he: false, fan_di_he: false, fan_ren_he: false,
       flowers: 0, prevalentWind: 0, seatWind: 0,
     };
@@ -483,6 +483,38 @@
     }
   }
 
+  // ─── 番数→点数对照表 ──────────────────────────────────────────
+  // 列：点炮给庄 | 庄·自摸每闲付 | 点炮给闲 | 闲·自摸庄付 | 闲·自摸每闲付
+  const FAN_POINTS_TABLE = [
+    { max:  2, ron_d:   1500, tsumo_d:   500, ron_n:  1000, tsumo_nd:   500, tsumo_nn:   300 },
+    { max:  3, ron_d:   2900, tsumo_d:  1000, ron_n:  2000, tsumo_nd:  1000, tsumo_nn:   500 },
+    { max:  4, ron_d:   5800, tsumo_d:  2000, ron_n:  3900, tsumo_nd:  2000, tsumo_nn:  1000 },
+    { max:  5, ron_d:   7700, tsumo_d:  2600, ron_n:  5200, tsumo_nd:  2600, tsumo_nn:  1300 },
+    { max:  6, ron_d:   9600, tsumo_d:  3200, ron_n:  6400, tsumo_nd:  3200, tsumo_nn:  1600 },
+    { max:  7, ron_d:  11600, tsumo_d:  3900, ron_n:  7700, tsumo_nd:  3900, tsumo_nn:  2000 },
+    { max: 15, ron_d:  12000, tsumo_d:  4000, ron_n:  8000, tsumo_nd:  4000, tsumo_nn:  2000 },
+    { max: 31, ron_d:  18000, tsumo_d:  6000, ron_n: 12000, tsumo_nd:  6000, tsumo_nn:  3000 },
+    { max: 47, ron_d:  24000, tsumo_d:  8000, ron_n: 16000, tsumo_nd:  8000, tsumo_nn:  4000 },
+    { max: 63, ron_d:  36000, tsumo_d: 12000, ron_n: 24000, tsumo_nd: 12000, tsumo_nn:  6000 },
+    { max: 87, ron_d:  48000, tsumo_d: 16000, ron_n: 32000, tsumo_nd: 16000, tsumo_nn:  8000 },
+    { max: 99, ron_d:  96000, tsumo_d: 32000, ron_n: 64000, tsumo_nd: 32000, tsumo_nn: 16000 },
+    { max: Infinity, ron_d: 144000, tsumo_d: 48000, ron_n: 96000, tsumo_nd: 48000, tsumo_nn: 24000 },
+  ];
+
+  function lookupPoints(total, selfDrawn, dealerWin) {
+    if (total < 2) return null;
+    const row = FAN_POINTS_TABLE.find(r => total <= r.max);
+    if (!row) return null;
+    const isEn = appLang() === 'en';
+    const fmt = n => n.toLocaleString();
+    if (!selfDrawn &&  dealerWin) return isEn ? `${fmt(row.ron_d)} pts (ron → dealer)`       : `${fmt(row.ron_d)} 点（点炮给庄）`;
+    if ( selfDrawn &&  dealerWin) return isEn ? `${fmt(row.tsumo_d)} pts × 3 all`             : `${fmt(row.tsumo_d)} 点 all（庄·自摸）`;
+    if (!selfDrawn && !dealerWin) return isEn ? `${fmt(row.ron_n)} pts (ron → non-dealer)`    : `${fmt(row.ron_n)} 点（点炮给闲）`;
+    /* selfDrawn && !dealerWin */ return isEn
+      ? `Dealer ${fmt(row.tsumo_nd)} / Others ${fmt(row.tsumo_nn)} pts`
+      : `庄 ${fmt(row.tsumo_nd)} / 闲各 ${fmt(row.tsumo_nn)} 点`;
+  }
+
   // 必然门清番种：这些牌型结构上不允许副露，故自摸时只计不求人，不额外追加门前清
   const NECESSARILY_CONCEALED_FANS = new Set([
     '十三幺', '七对子', '连七对', '七星不靠', '全不靠', '九莲宝灯', '四暗刻单骑',
@@ -719,6 +751,12 @@
     const total = el('div', 'hc-result-total');
     total.textContent = isEn ? `Total ${result.total} fan` : `合计 ${result.total} 番`;
     dom.result.appendChild(total);
+    const pts = lookupPoints(result.total, S.selfDrawn, S.dealerWin);
+    if (pts) {
+      const ptEl = el('div', 'hc-result-points');
+      ptEl.textContent = pts;
+      dom.result.appendChild(ptEl);
+    }
     if (result.fans.length === 0) {
       const none = el('p', 'hc-result-none');
       none.textContent = isEn ? 'No scoring fans' : '无番和';
@@ -749,7 +787,7 @@
   // ─── 开/关页面 ─────────────────────────────────────────────────
   function open() {
     resetState();
-    ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong',
+    ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong',
      'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
       const el = document.getElementById(id); el.checked = false; el.disabled = false;
     });
@@ -860,7 +898,7 @@
     });
     document.getElementById('hc-clear-all').addEventListener('click', () => {
       resetState();
-      ['hc-self-drawn','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
+      ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
        'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
         const el = document.getElementById(id); el.checked = false; el.disabled = false;
       });
@@ -876,6 +914,9 @@
     });
     document.getElementById('hc-buffer-clear').addEventListener('click', () => { S.buffer = []; render(); });
     dom.calcBtn.addEventListener('click', () => Calculator.ready.then(doCalculate));
+    document.getElementById('hc-dealer-win').addEventListener('change', e => {
+      S.dealerWin = e.target.checked;
+    });
     document.getElementById('hc-self-drawn').addEventListener('change', e => {
       S.selfDrawn = e.target.checked;
       // 自摸取消 → 海底捞月不再成立；自摸勾上 → 河底捞月不再成立

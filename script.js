@@ -600,6 +600,7 @@ const HC_UI_EN = {
   '张': 'tiles',
   '合计': 'Total',
   '无番和': 'No scoring fans',
+  '庄赢': 'Dealer',
 };
 
 // 通用翻译查找：fans.js nameEn → GLOSSARY_TERM_EN → HC_UI_EN → null

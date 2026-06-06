@@ -1,6 +1,7 @@
 #reference
 reference/
 CUSTOM_RULES.md
+data/fans2points.md
 
 #system settings
 .claude/
