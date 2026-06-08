@@ -277,6 +277,14 @@ const FANS_DATA = [
     handTypes: ["33332", "七对"], meldAllowed: true,
     tags: ["特殊和牌", "村规"], source: "村规" },
 
+  { id: "er_bei_kou", name: "二杯口", nameEn: "Double Two-Sequence", nameAlt: ["二盃口/两般高"], fan: 32,
+    desc: "门前清状态下，有两组完全相同的顺子（即两个一般高）。",
+    excludes: [],
+    handTypes: ["33332"], meldAllowed: false,
+    tags: ["七对", "顺子", "日麻"], source: "日麻" ,
+    notes: "必然包含七对子，但牌型复合中认定其为33332，故不计七对子与门清。" ,
+    example: "1s 2s 3s | 1s 2s 3s | 3p 4p 5p | 3p 4p 5p | E E",},
+
   // ─────────────────────────────────────────────────────
   //  24 番
   // ─────────────────────────────────────────────────────

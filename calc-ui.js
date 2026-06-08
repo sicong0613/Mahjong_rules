@@ -525,7 +525,7 @@
 
   // 必然门清番种：这些牌型结构上不允许副露，故自摸时只计不求人，不额外追加门前清
   const NECESSARILY_CONCEALED_FANS = new Set([
-    '十三幺', '七对子', '连七对', '七星不靠', '全不靠', '九莲宝灯', '四暗刻单骑',
+    '十三幺', '七对子', '连七对', '七星不靠', '全不靠', '九莲宝灯', '四暗刻单骑', '二杯口',
   ]);
 
   // ─── 村规后处理 ───────────────────────────────────────────────
@@ -599,6 +599,120 @@
     const fanVal = entry?.fan ?? 88;
     kept.unshift({ fan: fanVal, count: 1, value: fanVal, name: '四暗刻单骑' });
     return { ...result, fans: kept };
+  }
+
+  // ─── 二杯口检测 ───────────────────────────────────────────────
+  // 三条路径：
+  //   路径A（七対子）：WASM 选用七对子解析，会漏掉全带5/连6等复合番
+  //                    → 重跑 WASM 并传入一副明吃，强制走33332路径
+  //   路径B（顺子对）：WASM 以33332解析且检测到一般高×2
+  //                    → 直接移除被二杯口吸收的番，插入二杯口
+  //   路径C（一色双龙会）：结构本身即二杯口（123×2+789×2+5对，同色）
+  //                    → 移除门前清，插入二杯口；自摸时的不求人保留不动
+  function detectErBeiKou(result) {
+    if (S.melds.length > 0) return result;
+    if (result.fans.some(f => f.name === '一色双龙会')) return detectErBeiKouYiSe(result);
+    if (result.fans.some(f => f.name === '七对子'))    return detectErBeiKouQiDui(result);
+    const yg = result.fans.find(f => f.name === '一般高');
+    if (yg && yg.count >= 2) return detectErBeiKouSeq(result);
+    return result;
+  }
+
+  // 路径A：七对子 → 以一副明吃重跑 WASM，正确获取全带5/连6等复合番
+  function detectErBeiKouQiDui(result) {
+    const allTiles = [...S.standing.filter(Boolean), S.winTile];
+    const freq = new Map();
+    for (const t of allTiles) freq.set(t.code, (freq.get(t.code) || 0) + 1);
+
+    // 字牌对子须 ≤ 1
+    let honorPairs = 0;
+    for (const [code, cnt] of freq) {
+      if ((code >> 4) === 4 && cnt >= 2) honorPairs++;
+    }
+    if (honorPairs > 1) return result;
+
+    // 贪婪扫描两套顺子对，记录 seq1 / seq2
+    const tempFreq = new Map(freq);
+    let seq1 = null, seq2 = null;
+    outer: for (let suit = 1; suit <= 3; suit++) {
+      for (let r = 1; r <= 7; r++) {
+        const c1 = (suit << 4) | r;
+        const c2 = (suit << 4) | (r + 1);
+        const c3 = (suit << 4) | (r + 2);
+        if ((tempFreq.get(c1) || 0) >= 2 &&
+            (tempFreq.get(c2) || 0) >= 2 &&
+            (tempFreq.get(c3) || 0) >= 2) {
+          tempFreq.set(c1, tempFreq.get(c1) - 2);
+          tempFreq.set(c2, tempFreq.get(c2) - 2);
+          tempFreq.set(c3, tempFreq.get(c3) - 2);
+          if (!seq1) seq1 = [c1, c2, c3];
+          else { seq2 = [c1, c2, c3]; break outer; }
+        }
+      }
+    }
+    if (!seq1 || !seq2) return result;
+
+    // 剩余须恰好是一个对子（雀头）
+    const leftover = [...tempFreq.entries()].filter(([, v]) => v > 0);
+    if (leftover.length !== 1 || leftover[0][1] !== 2) return result;
+
+    // 二杯口结构确认：移除 seq1 一套改为明吃 pack，重跑 WASM 获取复合番
+    const newStanding = [...S.standing.filter(Boolean)];
+    for (const code of seq1) {
+      const idx = newStanding.findIndex(t => t.code === code);
+      if (idx !== -1) newStanding.splice(idx, 1);
+    }
+    const openPack = Calculator.makePackRaw(1, 1, seq1[1]); // 明吃，中间牌为索引
+
+    let combo = Calculator.calculate({
+      standing: newStanding.map(t => t.code), winTile: S.winTile.code, packs: [openPack],
+      flowers: S.flowers, selfDrawn: S.selfDrawn, lastTile: S.lastTile,
+      kongInvolved: S.kongWin, wallLast: S.wallLast || S.riverLast,
+      prevalentWind: S.prevalentWind, seatWind: S.seatWind,
+    });
+    if (combo.error) return result; // 降级回原七对子结果
+
+    // 规范化 combo 番名（同主流程 Step1 + Step2）
+    const rename = { '妙手回春': '海底捞月' };
+    if (S.riverLast) rename['海底捞月'] = '河底捞月';
+    combo.fans = combo.fans.map(f => rename[f.name] ? { ...f, name: rename[f.name] } : f);
+    if (typeof WASM_NAME_MAP !== 'undefined') {
+      combo.fans = combo.fans.map(f => WASM_NAME_MAP[f.name] ? { ...f, name: WASM_NAME_MAP[f.name] } : f);
+    }
+
+    // 过滤：被二杯口吸收的番 + 因明吃产生的多余番
+    // 注意：喜相逢不过滤——明吃使其 count 偏低，下方统一修正为×2
+    // 注意：平和不过滤——与二杯口可复合（全顺子+非字雀头时同时成立）
+    const drop = new Set(['一般高', '非门清自摸和', '自摸', '门前清', '不求人', '无番和']);
+    const fans = combo.fans.filter(f => !drop.has(f.name));
+
+
+    // 插入二杯口
+    const erbEntry = FANS_DATA?.find(f => f.name === '二杯口');
+    fans.unshift({ fan: erbEntry?.fan ?? 32, count: 1, value: erbEntry?.fan ?? 32, name: '二杯口' });
+
+    // 自摸时补不求人；二杯口必然门清，但荣和时门前清不单独计番
+    if (S.selfDrawn) fans.push({ fan: 2, count: 1, value: 2, name: '不求人' });
+
+    return { ...result, fans };
+  }
+
+  // 路径C：一色双龙会 → 结构即二杯口，移除门前清，插入二杯口；不求人保留
+  function detectErBeiKouYiSe(result) {
+    const fans = result.fans.filter(f => f.name !== '门前清');
+    const erbEntry = FANS_DATA?.find(f => f.name === '二杯口');
+    fans.unshift({ fan: erbEntry?.fan ?? 32, count: 1, value: erbEntry?.fan ?? 32, name: '二杯口' });
+    return { ...result, fans };
+  }
+
+  // 路径B：一般高×2（WASM 正常路径已给出全部复合番）→ 移除被吸收的番，插入二杯口
+  // 喜相逢、平和均可与二杯口复合，保留不过滤；门前清不与二杯口复合，过滤
+  function detectErBeiKouSeq(result) {
+    const drop = new Set(['一般高', '门前清']);
+    const fans = result.fans.filter(f => !drop.has(f.name));
+    const erbEntry = FANS_DATA?.find(f => f.name === '二杯口');
+    fans.unshift({ fan: erbEntry?.fan ?? 32, count: 1, value: erbEntry?.fan ?? 32, name: '二杯口' });
+    return { ...result, fans };
   }
 
   // ─── 九莲宝灯检测 ─────────────────────────────────────────────
@@ -705,6 +819,7 @@
       result = detectSiAnKeShanJi(result);
       // Step 4 & 5: 村规后处理、九莲宝灯检测（此时所有番名已是规范名）
       result = applyVillageRules(result);
+      result = detectErBeiKou(result);
       result = detectJiuLian(result);
       result = applyFansJsValues(result);
       result = detectChunQuanDaiYaoJiu(result); // 必须在 applyFansJsValues 之后，以免自定义值被覆盖
@@ -932,8 +1047,6 @@
       if ( e.target.checked && S.riverLast) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
       // 自摸与杠上开铳互斥
       if (e.target.checked && S.gangKaiChong) { S.gangKaiChong = false; document.getElementById('hc-gang-kai-chong').checked = false; }
-      // 自摸与一发互斥
-      if (e.target.checked && S.ippatsu) { S.ippatsu = false; document.getElementById('hc-ippatsu').checked = false; }
       applyConditionToFans('selfDrawn', e.target.checked);
     });
     document.getElementById('hc-last-tile').addEventListener('change',  e => { S.lastTile   = e.target.checked; applyConditionToFans('lastTile',   e.target.checked); });
@@ -1011,12 +1124,6 @@
     });
     document.getElementById('hc-ippatsu').addEventListener('change', e => {
       S.ippatsu = e.target.checked;
-      // 一发与自摸互斥
-      if (e.target.checked && S.selfDrawn) {
-        S.selfDrawn = false;
-        document.getElementById('hc-self-drawn').checked = false;
-        applyConditionToFans('selfDrawn', false);
-      }
     });
     document.getElementById('hc-gang-kai-chong').addEventListener('change', e => {
       S.gangKaiChong = e.target.checked;
