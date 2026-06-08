@@ -964,19 +964,22 @@
 
   // ─── 开/关页面 ─────────────────────────────────────────────────
   function open() {
-    resetState();
-    ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong',
-     'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
-      const el = document.getElementById(id); el.checked = false; el.disabled = false;
-    });
-    const riichiTypeSel = document.getElementById('hc-riichi-type');
-    riichiTypeSel.value = 'riichi'; riichiTypeSel.disabled = true;
-    const doraCountSel = document.getElementById('hc-dora-count');
-    doraCountSel.value = '1'; doraCountSel.disabled = true;
-    document.getElementById('hc-ippatsu').disabled = true;
-    document.getElementById('hc-flowers').value   = 0;
-    document.getElementById('hc-prevalent').value = 0;
-    document.getElementById('hc-seat').value      = 0;
+    if (!S) {
+      // 首次打开：初始化状态和控件
+      resetState();
+      ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong',
+       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
+        const el = document.getElementById(id); el.checked = false; el.disabled = false;
+      });
+      const riichiTypeSel = document.getElementById('hc-riichi-type');
+      riichiTypeSel.value = 'riichi'; riichiTypeSel.disabled = true;
+      const doraCountSel = document.getElementById('hc-dora-count');
+      doraCountSel.value = '1'; doraCountSel.disabled = true;
+      document.getElementById('hc-ippatsu').disabled = true;
+      document.getElementById('hc-flowers').value   = 0;
+      document.getElementById('hc-prevalent').value = 0;
+      document.getElementById('hc-seat').value      = 0;
+    }
     render();
     document.getElementById('hand-calc-page').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -1089,6 +1092,8 @@
       document.getElementById('hc-prevalent').value = 0;
       document.getElementById('hc-seat').value      = 0;
       render();
+      dom.result.innerHTML = '';
+      dom.result.classList.add('hidden');
     });
     document.getElementById('hc-buffer-clear').addEventListener('click', () => { S.buffer = []; render(); });
     dom.calcBtn.addEventListener('click', () => Calculator.ready.then(doCalculate));
