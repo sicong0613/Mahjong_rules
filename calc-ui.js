@@ -601,6 +601,59 @@
     return { ...result, fans: kept };
   }
 
+  // ─── 漏计番型修正（喜相逢/连6/老少副）────────────────────────────
+  // 这三种番各需「两副面子」（共6张牌），国标计番器只会计一次。
+  // 通过全手牌频率表重新计算实际可计次数，先于二杯口检测执行。
+  // 同样适用于路径A重跑后的 combo 结果（内部调用）。
+  function fixUnderCountedFans(result) {
+    const TARGETS = new Set(['喜相逢', '连6', '老少副']);
+    if (!result.fans.some(f => TARGETS.has(f.name) && f.count < 2)) return result;
+
+    // 建立全手牌频率表（立牌 + 和牌张 + 副露）
+    const freq = new Map();
+    const add = c => freq.set(c, (freq.get(c) || 0) + 1);
+    for (const t of S.standing.filter(Boolean)) add(t.code);
+    if (S.winTile) add(S.winTile.code);
+    for (const m of S.melds) for (const t of m.tiles) add(t.code);
+
+    const g = c => freq.get(c) || 0;
+
+    const maxCount = name => {
+      let total = 0;
+      if (name === '喜相逢') {
+        for (let r = 1; r <= 7; r++)
+          for (let a = 1; a <= 2; a++) for (let b = a + 1; b <= 3; b++) {
+            const ca = Math.min(g((a<<4)|r), g((a<<4)|(r+1)), g((a<<4)|(r+2)));
+            const cb = Math.min(g((b<<4)|r), g((b<<4)|(r+1)), g((b<<4)|(r+2)));
+            total += Math.min(ca, cb);
+          }
+      } else if (name === '连6') {
+        for (let s = 1; s <= 3; s++) for (let r = 1; r <= 4; r++) {
+          const c1 = Math.min(g((s<<4)|r),     g((s<<4)|(r+1)), g((s<<4)|(r+2)));
+          const c2 = Math.min(g((s<<4)|(r+3)), g((s<<4)|(r+4)), g((s<<4)|(r+5)));
+          total += Math.min(c1, c2);
+        }
+      } else { // 老少副
+        for (let s = 1; s <= 3; s++) {
+          const c1 = Math.min(g((s<<4)|1), g((s<<4)|2), g((s<<4)|3));
+          const c9 = Math.min(g((s<<4)|7), g((s<<4)|8), g((s<<4)|9));
+          total += Math.min(c1, c9);
+        }
+      }
+      return Math.min(total, 2); // 4副面子最多2次
+    };
+
+    let changed = false;
+    const fans = result.fans.map(f => {
+      if (!TARGETS.has(f.name) || f.count >= 2) return f;
+      const max = maxCount(f.name);
+      if (max <= f.count) return f;
+      changed = true;
+      return { ...f, count: max };
+    });
+    return changed ? { ...result, fans } : result;
+  }
+
   // ─── 二杯口检测 ───────────────────────────────────────────────
   // 三条路径：
   //   路径A（七対子）：WASM 选用七对子解析，会漏掉全带5/连6等复合番
@@ -679,10 +732,11 @@
     if (typeof WASM_NAME_MAP !== 'undefined') {
       combo.fans = combo.fans.map(f => WASM_NAME_MAP[f.name] ? { ...f, name: WASM_NAME_MAP[f.name] } : f);
     }
+    // 修正明吃导致的漏计（喜相逢/连6/老少副 count 可能偏低）
+    combo = fixUnderCountedFans(combo);
 
     // 过滤：被二杯口吸收的番 + 因明吃产生的多余番
-    // 注意：喜相逢不过滤——明吃使其 count 偏低，下方统一修正为×2
-    // 注意：平和不过滤——与二杯口可复合（全顺子+非字雀头时同时成立）
+    // 注意：喜相逢、平和不过滤——均可与二杯口复合
     const drop = new Set(['一般高', '非门清自摸和', '自摸', '门前清', '不求人', '无番和']);
     const fans = combo.fans.filter(f => !drop.has(f.name));
 
@@ -819,6 +873,7 @@
       result = detectSiAnKeShanJi(result);
       // Step 4 & 5: 村规后处理、九莲宝灯检测（此时所有番名已是规范名）
       result = applyVillageRules(result);
+      result = fixUnderCountedFans(result);
       result = detectErBeiKou(result);
       result = detectJiuLian(result);
       result = applyFansJsValues(result);
