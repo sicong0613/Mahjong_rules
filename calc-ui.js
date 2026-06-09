@@ -306,10 +306,9 @@
     const cbGkc    = document.getElementById('hc-gang-kai-chong');
     const cbRiichi = document.getElementById('hc-riichi');
     cbKong.disabled   = !hasKong;
-    cbGkc.disabled    = !hasKong;
+    // 杠上开铳是截胡对方的杠，与自身手牌是否有杠无关，不在此禁用
     cbRiichi.disabled = hasOpenMeld;
-    if (!hasKong     && S.kongWin)      { S.kongWin      = false; cbKong.checked   = false; }
-    if (!hasKong     && S.gangKaiChong) { S.gangKaiChong = false; cbGkc.checked    = false; }
+    if (!hasKong && S.kongWin) { S.kongWin = false; cbKong.checked = false; }
     if (hasOpenMeld  && S.riichi) {
       S.riichi = false; cbRiichi.checked = false;
       document.getElementById('hc-riichi-type').disabled = true;
