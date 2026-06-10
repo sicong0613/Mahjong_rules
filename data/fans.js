@@ -648,7 +648,7 @@ const FANS_DATA = [
     excludes: [],
     handTypes: ["33332"], meldAllowed: true,
     tags: ["顺子"], source: "国标",
-    example: "2s 3s 4s | 4m 5m 6m | 4p 5p 6p | 6m 7m 8m | E E", },
+    example: "1m 2m 3m | 2s 3s 4s | 5p 6p 7p | 7m 8m 9m | 1p 1p", },
 
   { id: "si_gui_yi", name: "四归一", nameEn: "Tile Hog", fan: 2,
     desc: "同一种牌的四张以非杠牌的形式出现在胡牌中（如 1 万刻子 + 含 1 万的顺子）。",
