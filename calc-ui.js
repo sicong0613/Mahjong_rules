@@ -615,28 +615,34 @@
     if (S.winTile) add(S.winTile.code);
     for (const m of S.melds) for (const t of m.tiles) add(t.code);
 
-    const g = c => freq.get(c) || 0;
-
+    // 消耗型扫描：找到一次就从临时频率表里扣掉，避免同一张牌被多个模式重复计数
     const maxCount = name => {
+      const f = new Map(freq);
+      const get = c => f.get(c) || 0;
+      const eat = (codes, n) => { for (const c of codes) f.set(c, get(c) - n); };
       let total = 0;
       if (name === '喜相逢') {
         for (let r = 1; r <= 7; r++)
           for (let a = 1; a <= 2; a++) for (let b = a + 1; b <= 3; b++) {
-            const ca = Math.min(g((a<<4)|r), g((a<<4)|(r+1)), g((a<<4)|(r+2)));
-            const cb = Math.min(g((b<<4)|r), g((b<<4)|(r+1)), g((b<<4)|(r+2)));
-            total += Math.min(ca, cb);
+            const cA = [(a<<4)|r, (a<<4)|(r+1), (a<<4)|(r+2)];
+            const cB = [(b<<4)|r, (b<<4)|(r+1), (b<<4)|(r+2)];
+            const n = Math.min(Math.min(...cA.map(get)), Math.min(...cB.map(get)));
+            if (n > 0) { eat([...cA, ...cB], n); total += n; }
           }
       } else if (name === '连6') {
         for (let s = 1; s <= 3; s++) for (let r = 1; r <= 4; r++) {
-          const c1 = Math.min(g((s<<4)|r),     g((s<<4)|(r+1)), g((s<<4)|(r+2)));
-          const c2 = Math.min(g((s<<4)|(r+3)), g((s<<4)|(r+4)), g((s<<4)|(r+5)));
-          total += Math.min(c1, c2);
+          const codes = [r,r+1,r+2,r+3,r+4,r+5].map(k => (s<<4)|k);
+          const c1 = Math.min(get(codes[0]), get(codes[1]), get(codes[2]));
+          const c2 = Math.min(get(codes[3]), get(codes[4]), get(codes[5]));
+          const n = Math.min(c1, c2);
+          if (n > 0) { eat(codes, n); total += n; }
         }
       } else { // 老少副
         for (let s = 1; s <= 3; s++) {
-          const c1 = Math.min(g((s<<4)|1), g((s<<4)|2), g((s<<4)|3));
-          const c9 = Math.min(g((s<<4)|7), g((s<<4)|8), g((s<<4)|9));
-          total += Math.min(c1, c9);
+          const lo = [1,2,3].map(k => (s<<4)|k);
+          const hi = [7,8,9].map(k => (s<<4)|k);
+          const n = Math.min(Math.min(...lo.map(get)), Math.min(...hi.map(get)));
+          if (n > 0) { eat([...lo, ...hi], n); total += n; }
         }
       }
       return Math.min(total, 2); // 4副面子最多2次
