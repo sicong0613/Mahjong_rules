@@ -25,6 +25,8 @@ function init() {
   renderFilterChips();
   renderAll();
   bindEvents();
+  const hash = window.location.hash.slice(1);
+  if (hash) scrollToFanCard(hash);
 }
 
 /* ── 事件绑定 ────────────────────────────────────────── */

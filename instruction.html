@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="国标麻将入门：认识牌、游戏流程、吃碰杠和、计番规则简介">
+  <title>入门指南 — 麻将番种速查</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      padding-top: 88px;
+      padding-bottom: 40px;
+    }
+
+    /* ── 顶栏 ── */
+    #instr-header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 48px;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    #instr-header a.back-link {
+      color: rgba(255,255,255,.9);
+      text-decoration: none;
+      font-size: .85rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,.45);
+      white-space: nowrap;
+    }
+    #instr-header a.back-link:hover { background: rgba(255,255,255,.15); }
+    #instr-header .instr-title { font-weight: 700; font-size: .95rem; }
+
+    /* ── 目录导航 ── */
+    #instr-toc {
+      position: fixed;
+      top: 48px; left: 0; right: 0;
+      z-index: 90;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    #instr-toc::-webkit-scrollbar { display: none; }
+    #instr-toc a {
+      white-space: nowrap;
+      font-size: .73rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 3px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #instr-toc a:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── 主内容 ── */
+    #instr-main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 14px 0;
+    }
+    .instr-section { margin-bottom: 40px; }
+    .instr-section h2 {
+      font-size: 1.1rem; font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--border);
+      scroll-margin-top: 96px;
+    }
+    .instr-section h3 { font-size: .9rem; font-weight: 700; margin: 14px 0 6px; }
+    .instr-section p  { font-size: .855rem; line-height: 1.75; color: #3a3028; margin-bottom: 6px; }
+    .instr-section ul,
+    .instr-section ol { margin: 6px 0 8px 18px; font-size: .855rem; line-height: 1.85; color: #3a3028; }
+
+    /* ── 花色展示 ── */
+    .tile-suites { display: flex; flex-wrap: wrap; gap: 14px 20px; margin: 12px 0; justify-content: center; }
+    .tile-suite-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .tile-suite-row { display: flex; gap: 2px; }
+    .tile-suite-label { font-size: .7rem; color: var(--text-muted); }
+
+    /* ── 手牌示例框 ── */
+    .hand-example { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin: 8px 0; }
+    .hand-label { font-size: .72rem; color: var(--text-muted); margin-bottom: 5px; }
+    .hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+    .hand-sep { width: 7px; flex-shrink: 0; }
+
+    /* ── 提示框 ── */
+    .info-box {
+      background: #e3f2fd; border-left: 3px solid #1565c0;
+      border-radius: 0 6px 6px 0; padding: 8px 12px;
+      font-size: .82rem; color: #1a3a5c; margin: 10px 0; line-height: 1.65;
+    }
+    .tip-box {
+      background: #fffbf0; border-left: 3px solid #f0c040;
+      border-radius: 0 6px 6px 0; padding: 8px 12px;
+      font-size: .82rem; color: #5a4a20; margin: 10px 0; line-height: 1.65;
+    }
+
+    /* ── 步骤列表 ── */
+    .step-list { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 10px; }
+    .step-list li { display: flex; gap: 10px; align-items: flex-start; font-size: .855rem; line-height: 1.7; color: #3a3028; }
+    .step-num {
+      flex-shrink: 0; width: 22px; height: 22px;
+      background: var(--accent); color: #fff; border-radius: 50%;
+      font-size: .7rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; margin-top: 2px;
+    }
+
+    /* ── 概念卡格子 ── */
+    .concept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin: 10px 0; }
+    .concept-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; }
+    .concept-card-label { font-size: .72rem; font-weight: 700; color: var(--accent); margin-bottom: 5px; }
+    .concept-card-tiles { display: flex; gap: 2px; flex-wrap: wrap; }
+    .concept-card-note { font-size: .7rem; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+
+    /* ── 常见和牌格子 ── */
+    .common-hands-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; margin-top: 12px; }
+    .common-hand-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .common-hand-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .common-hand-name { font-weight: 700; font-size: .88rem; }
+    .common-hand-desc { font-size: .77rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 6px; }
+    .common-hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+
+    /* ── 牌图片尺寸 ── */
+    .tile-sm {
+      width: 26px; height: 34px; padding: 1px;
+      box-sizing: border-box; border-radius: 3px;
+      object-fit: contain; display: block; flex-shrink: 0;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.55);
+    }
+    @media (max-width: 480px) { .tile-sm { width: 20px; height: 26px; } }
+
+    /* ── 响应式 ── */
+    @media (min-width: 640px) {
+      body { padding-top: 92px; }
+      #instr-toc { padding: 9px 20px; }
+      #instr-main { padding: 28px 20px 0; }
+      .instr-section p, .instr-section ul, .instr-section ol, .step-list li { font-size: .9rem; }
+      .instr-section h2 { font-size: 1.2rem; }
+      .instr-section h3 { font-size: .95rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header id="instr-header">
+    <a href="index.html" class="back-link">← 返回速查</a>
+    <span class="instr-title">入门指南</span>
+  </header>
+
+  <nav id="instr-toc"></nav>
+  <main id="instr-main"></main>
+
+  <footer id="site-footer">
+    <p>计番引擎基于 <a href="https://github.com/summerinsects/mahjong-algorithm" target="_blank" rel="noopener">Jeff Wang 的开源库</a>（MIT License）</p>
+    <p>番种数据与 UI 由 <a href="https://github.com/sicong0613/Mahjong_rules" target="_blank" rel="noopener">sicong0613</a> 整理 &amp; 与 Claude（Anthropic）协作开发</p>
+  </footer>
+
+  <script src="data/glossary.js?v=2"></script>
+  <script src="data/fans.js?v=2"></script>
+  <script src="data/instruction.js"></script>
+  <script>
+    // ── 牌图片辅助 ──────────────────────────────────────
+    const TILE_LABELS = {
+      '1m':'一万','2m':'二万','3m':'三万','4m':'四万','5m':'五万',
+      '6m':'六万','7m':'七万','8m':'八万','9m':'九万',
+      '1p':'一饼','2p':'二饼','3p':'三饼','4p':'四饼','5p':'五饼',
+      '6p':'六饼','7p':'七饼','8p':'八饼','9p':'九饼',
+      '1s':'一索','2s':'二索','3s':'三索','4s':'四索','5s':'五索',
+      '6s':'六索','7s':'七索','8s':'八索','9s':'九索',
+      'E':'东','S':'南','W':'西','N':'北','Z':'中','F':'发','B':'白','X':'牌背',
+    };
+
+    function makeTile(code) {
+      const img = document.createElement('img');
+      img.className = 'tile-sm';
+      img.src = `img/tiles/${code}.svg`;
+      img.alt = TILE_LABELS[code] || code;
+      return img;
+    }
+
+    function renderTileStr(tilesStr, container) {
+      tilesStr.trim().split(/\s+/).forEach(tok => {
+        if (tok === '|') {
+          const sep = document.createElement('span');
+          sep.className = 'hand-sep';
+          container.appendChild(sep);
+        } else {
+          container.appendChild(makeTile(tok));
+        }
+      });
+    }
+
+    // ── Block 渲染器 ────────────────────────────────────
+    function renderBlock(block, section) {
+      switch (block.type) {
+
+        case 'p': {
+          const el = document.createElement('p');
+          el.innerHTML = block.text;
+          return el;
+        }
+
+        case 'h3': {
+          const el = document.createElement('h3');
+          el.textContent = block.text;
+          return el;
+        }
+
+        case 'ul': {
+          const el = document.createElement('ul');
+          block.items.forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = item;
+            el.appendChild(li);
+          });
+          return el;
+        }
+
+        case 'steps': {
+          const ol = document.createElement('ol');
+          ol.className = 'step-list';
+          block.items.forEach((item, i) => {
+            const li = document.createElement('li');
+            const num = document.createElement('div');
+            num.className = 'step-num';
+            num.textContent = i + 1;
+            const text = document.createElement('div');
+            text.innerHTML = item;
+            li.appendChild(num);
+            li.appendChild(text);
+            ol.appendChild(li);
+          });
+          return ol;
+        }
+
+        case 'tile-suites': {
+          const wrap = document.createElement('div');
+          wrap.className = 'tile-suites';
+          block.groups.forEach(g => {
+            if (g.break) {
+              const br = document.createElement('div');
+              br.style.cssText = 'width:100%;height:0;';
+              wrap.appendChild(br);
+              return;
+            }
+            const group = document.createElement('div');
+            group.className = 'tile-suite-group';
+            const row = document.createElement('div');
+            row.className = 'tile-suite-row';
+            renderTileStr(g.tiles, row);
+            const label = document.createElement('div');
+            label.className = 'tile-suite-label';
+            label.textContent = g.label;
+            group.appendChild(row);
+            group.appendChild(label);
+            wrap.appendChild(group);
+          });
+          return wrap;
+        }
+
+        case 'hand': {
+          const box = document.createElement('div');
+          box.className = 'hand-example';
+          const lbl = document.createElement('div');
+          lbl.className = 'hand-label';
+          lbl.textContent = block.label;
+          const tiles = document.createElement('div');
+          tiles.className = 'hand-tiles';
+          renderTileStr(block.tiles, tiles);
+          box.appendChild(lbl);
+          box.appendChild(tiles);
+          return box;
+        }
+
+        case 'concept-grid': {
+          const grid = document.createElement('div');
+          grid.className = 'concept-grid';
+          block.items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'concept-card';
+            const lbl = document.createElement('div');
+            lbl.className = 'concept-card-label';
+            lbl.textContent = item.label;
+            const tiles = document.createElement('div');
+            tiles.className = 'concept-card-tiles';
+            renderTileStr(item.tiles, tiles);
+            const note = document.createElement('div');
+            note.className = 'concept-card-note';
+            note.textContent = item.note;
+            card.appendChild(lbl);
+            card.appendChild(tiles);
+            card.appendChild(note);
+            grid.appendChild(card);
+          });
+          return grid;
+        }
+
+        case 'info': {
+          const el = document.createElement('div');
+          el.className = 'info-box';
+          el.innerHTML = block.text;
+          return el;
+        }
+
+        case 'tip': {
+          const el = document.createElement('div');
+          el.className = 'tip-box';
+          el.innerHTML = block.text;
+          return el;
+        }
+
+        case 'common-hands': {
+          const grid = document.createElement('div');
+          grid.className = 'common-hands-grid';
+          block.items.forEach(item => {
+            const f = FANS_DATA.find(x => x.id === item.id);
+            if (!f) return;
+
+            const card = document.createElement('div');
+            card.className = 'common-hand-card';
+
+            const header = document.createElement('div');
+            header.className = 'common-hand-header';
+            const badge = document.createElement('span');
+            badge.className = `fan-badge badge-${f.fan}`;
+            badge.textContent = f.fan;
+            const name = document.createElement('span');
+            name.className = 'common-hand-name';
+            name.textContent = f.name;
+            header.appendChild(badge);
+            header.appendChild(name);
+
+            const desc = document.createElement('div');
+            desc.className = 'common-hand-desc';
+            desc.textContent = f.desc;
+
+            const tileStr = item.tiles || f.example || '';
+            if (tileStr) {
+              const tiles = document.createElement('div');
+              tiles.className = 'common-hand-tiles';
+              renderTileStr(tileStr, tiles);
+              card.appendChild(header);
+              card.appendChild(desc);
+              card.appendChild(tiles);
+            } else {
+              card.appendChild(header);
+              card.appendChild(desc);
+            }
+            grid.appendChild(card);
+          });
+          return grid;
+        }
+
+        default:
+          return null;
+      }
+    }
+
+    // ── 页面渲染 ────────────────────────────────────────
+    const toc  = document.getElementById('instr-toc');
+    const main = document.getElementById('instr-main');
+
+    INSTRUCTION_DATA.forEach(sec => {
+      // TOC 链接
+      const a = document.createElement('a');
+      a.href = `#${sec.id}`;
+      a.textContent = sec.title;
+      toc.appendChild(a);
+
+      // 章节
+      const section = document.createElement('section');
+      section.className = 'instr-section';
+      section.id = sec.id;
+
+      const h2 = document.createElement('h2');
+      h2.textContent = sec.title;
+      section.appendChild(h2);
+
+      sec.blocks.forEach(block => {
+        const el = renderBlock(block, section);
+        if (el) section.appendChild(el);
+      });
+
+      main.appendChild(section);
+    });
+
+    // ── 术语超链接系统 ──────────────────────────────────
+    let _termMap = null, _termPattern = null, _activeTerm = null;
+
+    function getTermMap() {
+      if (_termMap) return _termMap;
+      _termMap = new Map();
+      for (const [term, def] of Object.entries(GLOSSARY))
+        _termMap.set(term, { type: 'gloss', def });
+      FANS_DATA.forEach(f => {
+        _termMap.set(f.name, { type: 'fan', data: f });
+        (f.nameAlt || []).forEach(alt => _termMap.set(alt, { type: 'fan', data: f }));
+      });
+      return _termMap;
+    }
+
+    function getTermPattern() {
+      if (_termPattern) return _termPattern;
+      const terms = [...getTermMap().keys()].sort((a, b) => b.length - a.length);
+      _termPattern = new RegExp(
+        terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g'
+      );
+      return _termPattern;
+    }
+
+    function linkifyText(rootEl) {
+      const pattern = getTermPattern();
+      const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+          if (node.parentElement?.closest(
+            '.tile-suite-row,.hand-tiles,.concept-card-tiles,.common-hand-tiles,.term,.fan-badge,.instr-title'
+          )) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      const nodes = [];
+      let n;
+      while ((n = walker.nextNode())) nodes.push(n);
+      nodes.forEach(textNode => {
+        const text = textNode.textContent;
+        pattern.lastIndex = 0;
+        let match, last = 0;
+        const frag = document.createDocumentFragment();
+        while ((match = pattern.exec(text)) !== null) {
+          if (match.index > last)
+            frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+          const span = document.createElement('span');
+          span.className = 'term';
+          span.dataset.term = match[0];
+          span.textContent = match[0];
+          frag.appendChild(span);
+          last = match.index + match[0].length;
+        }
+        if (last === 0) return;
+        if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+        textNode.parentNode.replaceChild(frag, textNode);
+      });
+    }
+
+    function showTermPopup(termEl, termName) {
+      let popup = document.getElementById('term-popup');
+      if (!popup) {
+        popup = document.createElement('div');
+        popup.id = 'term-popup';
+        popup.className = 'hidden';
+        document.body.appendChild(popup);
+      }
+      const entry = getTermMap().get(termName);
+      if (!entry) return;
+      if (entry.type === 'fan') {
+        const f = entry.data;
+        popup.innerHTML = `
+          <div class="term-popup-head">
+            <span class="fan-badge badge-${f.fan} term-popup-badge">${f.fan}</span>
+            <strong class="term-popup-name">${f.name}</strong>
+          </div>
+          <p class="term-popup-desc">${f.desc}</p>
+          <a class="term-popup-goto" href="index.html#${f.id}" target="_blank">→ 查看速查表</a>`;
+      } else {
+        popup.innerHTML = `
+          <div class="term-popup-head"><strong class="term-popup-name">${termName}</strong></div>
+          <p class="term-popup-desc">${entry.def}</p>`;
+      }
+      popup.classList.remove('hidden');
+      const rect = termEl.getBoundingClientRect();
+      const W = 250, M = 8;
+      let left = rect.left + window.scrollX;
+      if (left + W > window.innerWidth - M) left = window.innerWidth - W - M;
+      if (left < M) left = M;
+      popup.style.left = left + 'px';
+      popup.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+    }
+
+    function hideTermPopup() {
+      _activeTerm = null;
+      document.getElementById('term-popup')?.classList.add('hidden');
+    }
+
+    document.addEventListener('click', e => {
+      const term = e.target.closest('.term');
+      if (term) {
+        if (term === _activeTerm) { hideTermPopup(); return; }
+        _activeTerm = term;
+        showTermPopup(term, term.dataset.term);
+        return;
+      }
+      if (!e.target.closest('#term-popup')) hideTermPopup();
+    });
+
+    linkifyText(main);
+  </script>
+
+</body>
+</html>

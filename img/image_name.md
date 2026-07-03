@@ -4,7 +4,7 @@
 三万		3m.svg
 四万		4m.svg
 五万		5m.svg
-五万(红)	5m.svg
+五万(红)	0m.svg
 六万		6m.svg
 七万		7m.svg
 八万		8m.svg
@@ -14,7 +14,8 @@
 二饼		2p.svg
 三饼		3p.svg
 四饼		4p.svg
-五饼(红)	5p.svg
+五饼		5p.svg
+五饼(红)	0p.svg
 六饼		6p.svg
 七饼		7p.svg
 八饼		8p.svg
@@ -24,7 +25,8 @@
 二索		2s.svg
 三索		3s.svg
 四索		4s.svg
-五索(红)	5s.svg
+五索		5s.svg
+五索(红)	0s.svg
 六索		6s.svg
 七索		7s.svg
 八索		8s.svg
