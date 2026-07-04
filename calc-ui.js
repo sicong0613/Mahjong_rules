@@ -484,6 +484,8 @@
 
   // ─── 番数→点数对照表 ──────────────────────────────────────────
   // 列：点炮给庄 | 庄·自摸每闲付 | 点炮给闲 | 闲·自摸庄付 | 闲·自摸每闲付
+  // 区间：16-21满贯 / 22-27跳满 / 28-35倍满 / 36-49三倍满 / 50-63累计役满
+  // ≥64番种另行计算（见 lookupPoints）
   const FAN_POINTS_TABLE = [
     { max:  2, ron_d:   1500, tsumo_d:   500, ron_n:  1000, tsumo_nd:   500, tsumo_nn:   300 },
     { max:  3, ron_d:   2000, tsumo_d:   700, ron_n:  1300, tsumo_nd:   700, tsumo_nn:   400 },
@@ -499,27 +501,48 @@
     { max: 13, ron_d:   9600, tsumo_d:  3200, ron_n:  6400, tsumo_nd:  3200, tsumo_nn:  1600 },
     { max: 14, ron_d:  10600, tsumo_d:  3600, ron_n:  7100, tsumo_nd:  3600, tsumo_nn:  1800 },
     { max: 15, ron_d:  11600, tsumo_d:  3900, ron_n:  7700, tsumo_nd:  3900, tsumo_nn:  2000 },
-    { max: 23, ron_d:  12000, tsumo_d:  4000, ron_n:  8000, tsumo_nd:  4000, tsumo_nn:  2000 },
-    { max: 31, ron_d:  18000, tsumo_d:  6000, ron_n: 12000, tsumo_nd:  6000, tsumo_nn:  3000 },
-    { max: 47, ron_d:  24000, tsumo_d:  8000, ron_n: 16000, tsumo_nd:  8000, tsumo_nn:  4000 },
-    { max: 63, ron_d:  36000, tsumo_d: 12000, ron_n: 24000, tsumo_nd: 12000, tsumo_nn:  6000 },
-    { max: 87, ron_d:  48000, tsumo_d: 16000, ron_n: 32000, tsumo_nd: 16000, tsumo_nn:  8000 },
-    { max: 99, ron_d:  96000, tsumo_d: 32000, ron_n: 64000, tsumo_nd: 32000, tsumo_nn: 16000 },
-    { max: Infinity, ron_d: 144000, tsumo_d: 48000, ron_n: 96000, tsumo_nd: 48000, tsumo_nn: 24000 },
+    { max: 21, ron_d:  12000, tsumo_d:  4000, ron_n:  8000, tsumo_nd:  4000, tsumo_nn:  2000 }, // 满贯
+    { max: 27, ron_d:  18000, tsumo_d:  6000, ron_n: 12000, tsumo_nd:  6000, tsumo_nn:  3000 }, // 跳满
+    { max: 35, ron_d:  24000, tsumo_d:  8000, ron_n: 16000, tsumo_nd:  8000, tsumo_nn:  4000 }, // 倍满
+    { max: 49, ron_d:  36000, tsumo_d: 12000, ron_n: 24000, tsumo_nd: 12000, tsumo_nn:  6000 }, // 三倍满
+    { max: Infinity, ron_d: 48000, tsumo_d: 16000, ron_n: 32000, tsumo_nd: 16000, tsumo_nn: 8000 }, // 累计役满封顶
   ];
 
-  function lookupPoints(total, selfDrawn, dealerWin) {
-    if (total < 2) return null;
-    const row = FAN_POINTS_TABLE.find(r => total <= r.max);
-    if (!row) return null;
+  // 基础役满点数（一倍役满）
+  const YAKUMAN_BASE = { ron_d: 48000, tsumo_d: 16000, ron_n: 32000, tsumo_nd: 16000, tsumo_nn: 8000 };
+
+  // 将点数行格式化为显示字符串
+  function formatPointRow(row, selfDrawn, dealerWin) {
     const isEn = appLang() === 'en';
     const fmt = n => n.toLocaleString();
-    if (!selfDrawn &&  dealerWin) return isEn ? `${fmt(row.ron_d)} pts (ron → dealer)`       : `${fmt(row.ron_d)} 点（点炮给庄）`;
-    if ( selfDrawn &&  dealerWin) return isEn ? `${fmt(row.tsumo_d)} pts × 3 all`             : `${fmt(row.tsumo_d)} 点 all（庄·自摸）`;
-    if (!selfDrawn && !dealerWin) return isEn ? `${fmt(row.ron_n)} pts (ron → non-dealer)`    : `${fmt(row.ron_n)} 点（点炮给闲）`;
-    /* selfDrawn && !dealerWin */ return isEn
+    if (!selfDrawn &&  dealerWin) return isEn ? `${fmt(row.ron_d)} pts (ron → dealer)`    : `${fmt(row.ron_d)} 点（点炮给庄）`;
+    if ( selfDrawn &&  dealerWin) return isEn ? `${fmt(row.tsumo_d)} pts × 3 all`          : `${fmt(row.tsumo_d)} 点 all（庄·自摸）`;
+    if (!selfDrawn && !dealerWin) return isEn ? `${fmt(row.ron_n)} pts (ron → non-dealer)` : `${fmt(row.ron_n)} 点（点炮给闲）`;
+    return isEn
       ? `Dealer ${fmt(row.tsumo_nd)} / Others ${fmt(row.tsumo_nn)} pts`
       : `庄 ${fmt(row.tsumo_nd)} / 闲各 ${fmt(row.tsumo_nn)} 点`;
+  }
+
+  // 计算点数：
+  //   若有 ≥64番 的番种 → 忽略小番，每个64番种×1役满，每个88番种×2役满，叠加
+  //   否则 → 番数封顶63后查表（累计役满封顶）
+  function lookupPoints(result, selfDrawn, dealerWin) {
+    if (!result || result.total < 2) return null;
+    const highFans = (result.fans || []).filter(f => f.fan >= 64);
+    if (highFans.length > 0) {
+      const mult = highFans.reduce((sum, f) => sum + (f.fan >= 88 ? 2 : 1) * (f.count ?? 1), 0);
+      const row = {
+        ron_d:    YAKUMAN_BASE.ron_d    * mult,
+        tsumo_d:  YAKUMAN_BASE.tsumo_d  * mult,
+        ron_n:    YAKUMAN_BASE.ron_n    * mult,
+        tsumo_nd: YAKUMAN_BASE.tsumo_nd * mult,
+        tsumo_nn: YAKUMAN_BASE.tsumo_nn * mult,
+      };
+      return formatPointRow(row, selfDrawn, dealerWin);
+    }
+    const row = FAN_POINTS_TABLE.find(r => result.total <= r.max);
+    if (!row) return null;
+    return formatPointRow(row, selfDrawn, dealerWin);
   }
 
   // 必然门清番种：这些牌型结构上不允许副露，故自摸时只计不求人，不额外追加门前清
@@ -909,9 +932,9 @@
         const fans = [...result.fans, { fan: 2, count: 1, value: 2, name: '一发' }];
         result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
       }
-      // 宝牌（每张 1 番）
+      // 宝牌（每张 2 番）
       if (S.dora > 0) {
-        const fans = [...result.fans, { fan: 1, count: S.dora, value: 1, name: '宝牌' }];
+        const fans = [...result.fans, { fan: 2, count: S.dora, value: 2, name: '宝牌' }];
         result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
       }
     }
@@ -949,7 +972,7 @@
     const total = el('div', 'hc-result-total');
     total.textContent = isEn ? `Total ${result.total} fan` : `合计 ${result.total} 番`;
     dom.result.appendChild(total);
-    const pts = lookupPoints(result.total, S.selfDrawn, S.dealerWin);
+    const pts = lookupPoints(result, S.selfDrawn, S.dealerWin);
     if (pts) {
       const ptEl = el('div', 'hc-result-points');
       ptEl.textContent = pts;

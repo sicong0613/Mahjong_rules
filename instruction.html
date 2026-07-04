@@ -122,7 +122,7 @@
     .concept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin: 10px 0; }
     .concept-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; }
     .concept-card-label { font-size: .72rem; font-weight: 700; color: var(--accent); margin-bottom: 5px; }
-    .concept-card-tiles { display: flex; gap: 2px; flex-wrap: wrap; }
+    .concept-card-tiles { display: flex; gap: 2px; flex-wrap: wrap; align-items: flex-end; }
     .concept-card-note { font-size: .7rem; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
 
     /* ── 常见和牌格子 ── */
@@ -142,6 +142,15 @@
       box-shadow: 0 0 0 1px rgba(0,0,0,.55);
     }
     @media (max-width: 480px) { .tile-sm { width: 20px; height: 26px; } }
+    .tile-sm[src$="X.svg"] { padding: 0; object-fit: fill; }
+    .tile-rotated-wrap { display: inline-flex; align-items: center; justify-content: center; width: 37px; height: 28px; flex-shrink: 0; }
+    .tile-rotated-wrap .tile-sm { transform: rotate(90deg); }
+    @media (max-width: 480px) { .tile-rotated-wrap { width: 26px; height: 20px; } }
+    .tile-stacked-wrap { position: relative; display: inline-block; width: 37px; height: 44px; flex-shrink: 0; }
+    .tile-stacked-wrap .tile-sm { position: absolute; left: 0; right: 0; margin: 0 auto; transform: rotate(90deg); }
+    .tile-stacked-wrap .tile-sm:first-child { top: 13px; }
+    .tile-stacked-wrap .tile-sm:last-child  { top: -15px; }
+    @media (max-width: 480px) { .tile-stacked-wrap { width: 28px; height: 34px; } .tile-stacked-wrap .tile-sm:first-child { top: 11px; } .tile-stacked-wrap .tile-sm:last-child { top: 1px; } }
 
     /* ── 响应式 ── */
     @media (min-width: 640px) {
@@ -193,15 +202,33 @@
     }
 
     function renderTileStr(tilesStr, container) {
-      tilesStr.trim().split(/\s+/).forEach(tok => {
+      const tokens = tilesStr.trim().split(/\s+/);
+      let i = 0;
+      while (i < tokens.length) {
+        const tok = tokens[i];
         if (tok === '|') {
           const sep = document.createElement('span');
           sep.className = 'hand-sep';
           container.appendChild(sep);
+          i++;
+        } else if (tok.startsWith('>') && i + 1 < tokens.length && tokens[i + 1].startsWith('>')) {
+          const wrap = document.createElement('span');
+          wrap.className = 'tile-stacked-wrap';
+          wrap.appendChild(makeTile(tok.slice(1)));
+          wrap.appendChild(makeTile(tokens[i + 1].slice(1)));
+          container.appendChild(wrap);
+          i += 2;
+        } else if (tok.startsWith('>')) {
+          const wrap = document.createElement('span');
+          wrap.className = 'tile-rotated-wrap';
+          wrap.appendChild(makeTile(tok.slice(1)));
+          container.appendChild(wrap);
+          i++;
         } else {
           container.appendChild(makeTile(tok));
+          i++;
         }
-      });
+      }
     }
 
     // ── Block 渲染器 ────────────────────────────────────

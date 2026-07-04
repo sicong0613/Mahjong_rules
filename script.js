@@ -208,7 +208,7 @@ const TILE_LABELS = {
 
 function makeTileImg(code) {
   const img = document.createElement('img');
-  img.className = 'tile';
+  img.className = code === 'X' ? 'tile tile-back' : 'tile';
   img.src = `img/tiles/${code}.svg`;
   img.alt = TILE_LABELS[code] || code;
   img.title = TILE_LABELS[code] || code;

@@ -294,7 +294,7 @@ input  { font-family: inherit; }
   padding: 1px;
   box-sizing: border-box;
   border-radius: 3px;
-  object-fit: contain;
+  object-fit: fill;
   display: block; flex-shrink: 0;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.55);
 }
@@ -538,13 +538,13 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 
 /* ── 响应式：手机小屏 ───────────────────────────────── */
 @media (max-width: 480px) {
-  .tile, .tile-text { width: 20px; height: 27px; }
+  .tile, .tile-text { width: 20px; height: 26px; }
   .tile-text { font-size: .55rem; }
-  .tile-rotated-wrap { width: 27px; height: 20px; }
+  .tile-rotated-wrap { width: 26px; height: 20px; }
 }
 @media (min-width: 481px) and (max-width: 639px) {
-  .tile, .tile-text { width: 32px; height: 48px; }
-  .tile-rotated-wrap { width: 48px; height: 32px; }
+  .tile, .tile-text { width: 32px; height: 42px; }
+  .tile-rotated-wrap { width: 42px; height: 32px; }
 }
 
 /* ── 响应式：桌面 ────────────────────────────────────── */
@@ -657,9 +657,7 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 }
 .hc-tile:active img { opacity: .7; }
 .hc-tile.hc-tile-np { padding: 0; overflow: hidden; background: #8b2020; box-shadow: 0 0 0 2px rgba(0,0,0,.5); }
-
-/* 牌背图片不需要内边距（背景色会直接贴边） */
-.tile[src$="X.svg"] { padding: 0; }
+.tile.tile-back { padding: 0; object-fit: fill; }
 
 /* 大号（选牌器） */
 .hc-tile-lg img { width: 32px; height: 42px; }

@@ -21,7 +21,7 @@
 const FANS_DATA = [
 
   // ─────────────────────────────────────────────────────
-  //  88 番  役满
+  //  88 番  两倍役满
   // ─────────────────────────────────────────────────────
   { id: "shi_san_yao", name: "十三幺", nameEn: "Thirteen Orphans", nameAlt: ["国士无双"], fan: 88,
     desc: "东南西北中发白，加上一万九万一条九条一饼九饼的13张牌型，外带其中任意额外一张作雀头。",
@@ -29,7 +29,7 @@ const FANS_DATA = [
     excludes: ["门前清", "五门齐"],
     handTypes: ["国士"], meldAllowed: false,
     tags: ["字牌", "幺九", "门清", "特殊牌型"], source: "国标/日麻",
-    notes: "（村）舍牌不含任意国士牌时达成 13 面听牌，称「国士无振 13 面」，可额外计 64 番。",
+    notes: "（村）舍牌不含任意国士牌时达成 13 面听牌，称「国士无振 13 面」，可额外多计一倍役满。",
     example: "1m 1m 1p 9p 1s 9s E S W N Z F B | 9m ",
     examples: [
       { label: "国士无双十三面", tiles: "1m 9m 1p 9p 1s 9s E S W N Z F B", wait:   ["1m", "9m", "1p", "9p", "1s", "9s", "E", "S", "W", "N", "Z", "F", "B"] },
@@ -56,7 +56,7 @@ const FANS_DATA = [
     tips: "中发白三刻固定，第四组面子和雀头随意搭配即可。雀头可以是字牌或数牌，不要求和前三组相关。" },
 
   { id: "lv_yi_se", name: "绿一色", nameEn: "All Green", fan: 88,
-    desc: "由 2、3、4、6、8 条和发牌组成的合法 33332 胡牌。可以以七对子/龙七对/豪七对形式出现",
+    desc: "由 2、3、4、6、8 条和发牌组成的合法 33332 和牌。可以以七对子/龙七对/豪七对形式出现。",
     excludes: ["混一色"],
     handTypes: ["33332"], meldAllowed: true,
     tags: ["一色", "三元牌"], source: "国标",
@@ -75,7 +75,7 @@ const FANS_DATA = [
     excludes: ["清一色", "门前清", "幺九刻"],
     handTypes: ["33332"], meldAllowed: false,
     tags: ["一色", "幺九", "门清"], source: "国标",
-    notes: "（村）舍牌不含该花色牌的纯正九莲称「无振纯九」，额外计 64 番。",
+    notes: "（村）舍牌不含该花色牌的纯正九莲称「无振纯九」，可额外多计一倍役满。",
     example: "1p 1p 1p 2p 3p 4p 5p 5p 7p 8p 9p 9p 9p | 6p",
     examples: [
       { label: "纯正九莲宝灯", tiles: "1p 1p 1p 2p 3p 4p 5p 6p 7p 8p 9p 9p 9p", wait:   ["1p", "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p"] },
@@ -109,14 +109,6 @@ const FANS_DATA = [
     ],
     tips: "7 对的序号必须连续，如 3456789 或 2345678 均可。三种特殊命名（大车轮/大竹林/大数邻）专指 2~8 连七对，起止不同则只称连七对。" },
 
-  { id: "tian_he", name: "天和", nameEn: "Heavenly Hand", fan: 88,
-    desc: "庄家起手 14 张配牌直接满足胡牌条件。",
-    conditions: "庄家限定，必须门清自摸。",
-    excludes: ["不求人"],
-    handTypes: ["33332", "七对", "不靠", "国士"], meldAllowed: false,
-    tags: ["特殊和牌", "门清", "自摸", "村规"], source: "村规",
-    example: "1m 2m 3m | 4m 5m 6m | 7m 8m 9m | 1p 2p 3p | 5p 5p",
-    tips: "庄家专属，起手 14 张（含补张前的初始牌）直接可以胡牌即为天和。理论上可以复合其他番种（如清一色）。" },
 
   { id: "si_an_ke_dan_qi", name: "四暗刻单骑", nameEn: "Four Concealed Pungs (Single Wait)", fan: 88,
     desc: "四组暗刻加单吊最后一张雀头。国标只记四暗刻和单吊。来源部分情形下日麻四暗刻单骑算两倍役满",
@@ -124,7 +116,7 @@ const FANS_DATA = [
     handTypes: ["33332"], meldAllowed: false,
     tags: ["暗刻", "门清", "村规"], source: "村规",
     example: "1m 1m 1m | 9p 9p 9p | E E E | Z Z Z | N | N",
-    tips: "四组暗刻全部为手牌中自摸的刻子（不可碰牌），听牌时为单张将牌的单骑听，区别于双碰听的普通四暗刻（64 番）。" },
+    tips: "四组暗刻全部为手牌中自摸的刻子（不可碰牌），听牌时为单张将牌的单骑听，区别于双碰听自摸的普通四暗刻（64 番）。" },
 
   { id: "da_qi_xing", name: "大七星", nameEn: "Big Seven Stars", fan: 88,
     desc: "字一色的七对子牌型（东南西北中发白各两张）。必须所有7种字牌都有",
@@ -137,7 +129,16 @@ const FANS_DATA = [
   // ─────────────────────────────────────────────────────
   //  64 番  役满
   // ─────────────────────────────────────────────────────
-  { id: "di_he", name: "地和", nameEn: "Earthly Hand", fan: 64,
+  { id: "tian_he", name: "天和", nameEn: "Heavenly Hand", fan: 64,
+    desc: "庄家起手 14 张配牌直接满足和牌条件。",
+    conditions: "庄家限定，必须门清自摸。",
+    excludes: ["不求人"],
+    handTypes: ["33332", "七对", "不靠", "国士"], meldAllowed: false,
+    tags: ["特殊和牌", "门清", "自摸", "村规"], source: "村规",
+    example: "1m 2m 3m | 4m 5m 6m | 7m 8m 9m | 1p 2p 3p | 5p 5p",
+    tips: "庄家专属，起手 14 张（含补张前的初始牌）直接可以胡牌即为天和。理论上可以复合其他番种（如清一色）。" },
+ 
+ { id: "di_he", name: "地和", nameEn: "Earthly Hand", fan: 64,
     desc: "闲家起手 13 张满足听牌，第一巡无人鸣牌时自摸胡牌。",
     conditions: "闲家限定，必须门清自摸。",
     excludes: ["不求人"],
@@ -154,7 +155,7 @@ const FANS_DATA = [
     tags: ["特殊和牌", "门清", "村规"], source: "村规",
     example: "1p 2p 3p | 2s 3s 4s | 3m 4m | W W W | B B | 5m", },
 
-  { id: "qing_yao_jiu", name: "清老头", nameEn: "All Terminals", fan: 64,
+  { id: "qing_yao_jiu", name: "清幺九", nameEn: "All Terminals", nameAlt: ["清老头"], fan: 64,
     desc: "完全由老头牌组成的 33332 或七对子胡牌。",
     excludes: ["纯全带幺九", "无字"],
     handTypes: ["33332", "七对"], meldAllowed: true,
@@ -199,7 +200,7 @@ const FANS_DATA = [
     example: "1s 2s 3s | 1s 2s 3s | 5s 5s | 7s 8s 9s | 7s 8s 9s",  },
 
   // ─────────────────────────────────────────────────────
-  //  48 番  倍満
+  //  48 番  三倍満
   // ─────────────────────────────────────────────────────
   { id: "yi_se_si_tong_shun", name: "一色四同顺", nameEn: "Quadruple Chow", fan: 48,
     desc: "同种花色四个完全相同的顺子。",
@@ -222,9 +223,9 @@ const FANS_DATA = [
     tags: ["暗杠", "杠子", "暗刻"], source: "国标",
     example: "1m 1m 1m | X E E X | X 9p 9p X | X B B X | Z Z", },
 
-  { id: "liu_ju_man_guan", name: "流局满贯", nameEn: "Exhaustive Draw", nameAlt: ["幺九振切"], fan: 48,
-    desc: "荒牌流局时，自家舍牌全为幺九及字牌，且没被人吃碰杠过自己的舍牌。",
-    conditions: "完成流局结算后，向其余三家进行一次等效自摸 48 番结算，无论如何都下庄。",
+  { id: "liu_ju_man_guan", name: "流局满贯", nameEn: "Great Exhaustive Draw", nameAlt: ["幺九振切"], fan: 48,
+    desc: "荒牌流局时，自家舍牌全为幺九及字牌，且没被人吃碰杠过自己的舍牌。因为本规则和牌难度较低，开门惩罚形同虚设，因此达成难度极高，故升格至三倍满。",
+    conditions: "完成流局结算后，向其余三家进行一次等效自摸48番的结算，且不进行没听罚点。若非庄达成则过庄，庄达成则连庄并增加本场数。",
     excludes: [],
     handTypes: [], meldAllowed: false,
     tags: ["流局", "幺九", "字牌", "广港日"], source: "广港日" },
@@ -236,13 +237,13 @@ const FANS_DATA = [
     tags: ["立直", "特殊和牌", "日麻"], source: "日麻" },
 
   { id: "ming_pai_li_zhi", name: "明牌立直", nameEn: "Open Riichi", nameAlt: ["Open RIICHI"], fan: 48,
-    desc: "立直时公布全部手牌及听牌。",
+    desc: "立直时公布全部手牌。非立直状态下点明牌立直算役满。",
     excludes: ["立直", "门前清"],
     handTypes: ["33332", "七对"], meldAllowed: false,
     tags: ["立直", "门清", "日麻"], source: "日麻" },
 
   // ─────────────────────────────────────────────────────
-  //  32 番  跳满
+  //  32 番  倍满
   // ─────────────────────────────────────────────────────
   { id: "yi_se_si_bu_gao", name: "一色四步高", nameEn: "Four Shifted Chows", fan: 32,
     desc: "同种花色四个序数依次递增 1 位或 2 位的顺子，加雀头。",
@@ -286,7 +287,7 @@ const FANS_DATA = [
     example: "1s 2s 3s | 1s 2s 3s | 3p 4p 5p | 3p 4p 5p | E E",},
 
   // ─────────────────────────────────────────────────────
-  //  24 番
+  //  24 番 跳满
   // ─────────────────────────────────────────────────────
   { id: "qi_dui_zi", name: "七对子", nameEn: "Seven Pairs", fan: 24,
     desc: "七组对子组成的胡牌，允许出现四张一样的牌（作为两个对子）。",
@@ -515,7 +516,7 @@ const FANS_DATA = [
     tags: ["特殊和牌", "杠子", "自摸"], source: "国标" },
 
   { id: "qiang_gang_he", name: "抢杠和", nameEn: "Robbing the Kong", fan: 8,
-    desc: "和其他人开明杠的牌（国士可抢暗杠，其余不可）。",
+    desc: "和其他人补开明杠的牌（国士可抢暗杠，其余不可）。",
     excludes: ["和绝张"],
     handTypes: ["33332", "七对"], meldAllowed: true,
     tags: ["特殊和牌"], source: "国标" },
@@ -688,11 +689,21 @@ const FANS_DATA = [
     tags: ["断幺", "无字"], source: "国标"  ,
     example: "2s 3s 4s | 4s 4s 4s | 6m 7m 8m | 4m 5m 6m | 2p 2p",},
 
+  { id: "li_zhi", name: "立直", nameEn: "Riichi", fan: 2,
+    desc: "门清状态下，横摆本次舍牌，宣布听牌立直，立直宣言牌无人和牌后交付1000点棒放到立直棒放置区。之后只能摸切，不能改听（暗杠若不改听则可以暗杠）。产生舍牌振听规则和见逃振听规则：如果立直后和牌范围包括自己的舍牌，或者在自己立直后见逃别人的出牌，则不可以和任何一张别人的牌，只能自摸。立直棒归和本场牌者所有（自己和则可拿回立直棒），如果荒牌流局则立直棒回归银行。",
+    conditions: "允许在不满足当前场规起胡要求的情况下胡牌。产生振听规则。如果立直宣言牌未通过那么不会损失立直棒",
+    excludes: [],
+    handTypes: ["33332", "七对"], meldAllowed: false,
+    tags: ["立直", "门清", "日麻"], source: "日麻",
+    notes: "未胡 -2 分，其他人抢先胡牌额外 +2 分。" },
+
+
   { id: "yi_fa", name: "一发", nameEn: "Ippatsu", fan: 2,
     desc: "宣布立直后一巡内（包括自己立直后下一次摸牌），在无人鸣牌的情况下胡牌。",
     excludes: [],
     handTypes: ["33332", "七对"], meldAllowed: false,
     tags: ["立直", "门清", "日麻"], source: "日麻" },
+
 
   // ─────────────────────────────────────────────────────
   //  1 番
@@ -772,25 +783,60 @@ const FANS_DATA = [
     tags: ["特殊牌型"], source: "国标",
     notes: "一般不开花牌。" },
 
-  { id: "bao_pai", name: "宝牌", nameEn: "Dora", fan: 1,
-    desc: "立直胡牌后翻出宝牌指示牌，手里每张宝牌加 1 番。",
+  { id: "bao_pai", name: "宝牌", nameEn: "Dora", fan: 2,
+    desc: "立直和牌后翻出里宝牌指示牌，或者是正常游戏中指示的表宝牌，或者是牌里面的赤宝牌，手里每张宝牌加 2 番。宝牌不算役，即不算做起和条件。",
     conditions: "宝牌指示牌的下一张为宝牌（数字牌 9→1 循环，风牌东南西北循环，三元牌中发白循环）。",
     excludes: [],
     handTypes: ["33332", "七对"], meldAllowed: false,
     tags: ["立直", "日麻"], source: "日麻",
-    notes: "与立直 8 番二选一：开宝牌时按宝牌+番种计；不开时不满 8 番记 8 番。" ,
+    notes: "" ,
     example: "0s | 0p | 0m",},
 
   // ─────────────────────────────────────────────────────
-  //  0 番  立直
+  //  0 番  流局与犯规
   // ─────────────────────────────────────────────────────
-  { id: "li_zhi", name: "立直", nameEn: "Riichi", fan: 2,
-    desc: "门清状态下宣布听牌立直。之后只能摸切，不能改听（暗杠若不改听则可以暗杠）。",
-    conditions: "允许在不满足当前场规起胡要求的情况下胡牌。产生振听规则。",
+  { id: "jiu_pai", name: "九种九牌", nameEn: "nine types of Orphans Remake", fan: 0,
+    desc: "起手摸第一张牌时若之前无人鸣牌，且此时手牌有9种（不是9张）九牌（即幺牌，国士需要的牌），即可推倒手牌重开本局。不过庄，不算连庄，相当于重开。",
     excludes: [],
-    handTypes: ["33332", "七对"], meldAllowed: false,
-    tags: ["立直", "门清", "日麻"], source: "日麻",
-    notes: "未胡 -2 分，其他人抢先胡牌额外 +2 分。" },
+    handTypes: [], meldAllowed: false,
+    tags: ["流局", "门清", "日麻"], source: "日麻",
+    notes: "" },
+    { id: "si_feng", name: "四风连打", nameEn: "four winds Remake", fan: 0,
+    desc: "四人第一巡不鸣牌的情况下均打出同一张风牌，重开本局。不过庄，不算连庄，相当于重开。",
+    excludes: [],
+    handTypes: [], meldAllowed: false,
+    tags: ["流局", "门清", "日麻"], source: "日麻",
+    notes: "" },
+    { id: "si_gang", name: "四杠散了", nameEn: "four kang Remake", fan: 0,
+    desc: "由超过一家开杠时，开出第四杠，杠牌，摸岭上，翻开第五个宝牌指示牌，开杠者打牌无人和牌则四杠散了，重开本局。不过庄，不算连庄，相当于重开。",
+    excludes: [],
+    handTypes: [], meldAllowed: false,
+    tags: ["流局", "日麻"], source: "日麻",
+    notes: "" },
+    { id: "huang_pai", name: "荒牌流局", nameEn: "Exhaustive Draw", fan: 0,
+    desc: "摸完最后一张可摸的牌，打出自己的舍牌后都无人和牌，则为荒牌流局。此时没听牌者需要向听牌者（即使没有役，只是型听）交付未听罚点。1人听牌从每家收1000，2人听牌则各自找不同的一家未听家收1500，三人听牌则每家从未听家收1000点。全听和全不听不罚点。庄家未听牌过庄，庄家听牌连庄并提升本场数",
+    excludes: [],
+    handTypes: [], meldAllowed: false,
+    tags: ["流局", "日麻"], source: "日麻",
+    notes: "" },
+    { id: "zha_hu", name: "诈和", nameEn: "foul of winning", fan: 0,
+    desc: "声称自己和牌并推倒手牌后检查发现不符合和牌条件（错和，振听荣和其他人，无役等不允许和牌的情况），视情况，情节轻微的新手收回去继续打（展示手牌为惩罚）；情节轻微的惯犯则本场不可以和牌只可以吃碰点炮当搅屎棍；情节恶性且严重的（带有欺骗，隐瞒等试图不公平游戏的行为）则罚交付三家各8000点",
+    excludes: [],
+    handTypes: [], meldAllowed: false,
+    tags: [], source: "村规",
+    notes: "" },
+    { id: "zha_li_zhi", name: "诈立直", nameEn: "foul of Riichi", fan: 0,
+    desc: "所有立直家在流局或者其他家和牌后都需要进行立直检查，未听者向其他三家交付各4000点",
+    excludes: [],
+    handTypes: [], meldAllowed: false,
+    tags: [], source: "村规",
+    notes: "" },
+    { id: "chu_qian", name: "出千和其他不公正游戏行为", nameEn: "foul of non competitive spirits", fan: 0,
+    desc: "出千被抓现行以及其他违反公平游戏精神的行为，拜拜了您嘞",
+    excludes: [],
+    handTypes: [], meldAllowed: false,
+    tags: [], source: "村规",
+    notes: "" },
 
   // ─────────────────────────────────────────────────────
   //  DLC  （默认不显示）
@@ -844,11 +890,11 @@ const FANS_DATA = [
 
 // 所有番数层级（用于分组显示）
 const FAN_TIERS = [
-  { fan: 88, label: "役满" },
+  { fan: 88, label: "两倍役满" },
   { fan: 64, label: "役满" },
-  { fan: 48, label: "倍满" },
-  { fan: 32, label: "跳满" },
-  { fan: 24, label: "" },
+  { fan: 48, label: "三倍满" },
+  { fan: 32, label: "倍满" },
+  { fan: 24, label: "跳满" },
   { fan: 16, label: "" },
   { fan: 12, label: "" },
   { fan: 8,  label: "" },
