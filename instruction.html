@@ -132,6 +132,7 @@
     .common-hand-name { font-weight: 700; font-size: .88rem; }
     .common-hand-desc { font-size: .77rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 6px; }
     .common-hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+    .common-hand-pct { margin-left: auto; font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
 
     /* ── 牌图片尺寸 ── */
     .tile-sm {
@@ -337,11 +338,15 @@
             const badge = document.createElement('span');
             badge.className = `fan-badge badge-${f.fan}`;
             badge.textContent = f.fan;
+            card.dataset.fanName = f.name;
             const name = document.createElement('span');
             name.className = 'common-hand-name';
             name.textContent = f.name;
+            const pct = document.createElement('span');
+            pct.className = 'common-hand-pct';
             header.appendChild(badge);
             header.appendChild(name);
+            header.appendChild(pct);
 
             const desc = document.createElement('div');
             desc.className = 'common-hand-desc';
@@ -507,6 +512,34 @@
     });
 
     linkifyText(main);
+
+    // ── 拉取统计，按频次重排常见和牌并显示占比 ───────────
+    fetch('/api/fan-stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const fans  = Array.isArray(data) ? data : (data.fans  || []);
+        const total = Array.isArray(data) ? 0     : (data.total || 0);
+        if (fans.length === 0) return;
+        const freq = Object.fromEntries(fans.map(d => [d.name, d.count]));
+
+        // 重排
+        const grid = document.querySelector('.common-hands-grid');
+        if (grid) {
+          [...grid.children]
+            .sort((a, b) => (freq[b.dataset.fanName] || 0) - (freq[a.dataset.fanName] || 0))
+            .forEach(c => grid.appendChild(c));
+        }
+
+        // 填入百分比
+        if (total > 0) {
+          document.querySelectorAll('.common-hand-pct').forEach(el => {
+            const count = freq[el.closest('.common-hand-card')?.dataset.fanName] || 0;
+            el.textContent = count ? (count / total * 100).toFixed(1) + '%' : '';
+          });
+        }
+      })
+      .catch(() => {});
   </script>
 
 </body>

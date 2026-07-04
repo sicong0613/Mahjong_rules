@@ -844,6 +844,8 @@
   }
 
   // ─── 计算 ──────────────────────────────────────────────────────
+  let _lastResult = null;
+
   function doCalculate() {
     const packs = S.melds.map(m => {
       if (m.type === 'chow')                return Calculator.makePackRaw(1, 1, m.tile);
@@ -914,6 +916,19 @@
       }
     }
     renderResult(result);
+    _lastResult = result.error ? null : result;
+    if (dom.uploadBtn) dom.uploadBtn.disabled = !_lastResult;
+    return result;
+  }
+
+  function reportFanStats(fans) {
+    const names = fans.map(f => f.name).filter(Boolean);
+    if (names.length === 0) return;
+    fetch('/api/fan-stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fans: names }),
+    }).catch(() => {});
   }
 
   function appLang() { return document.documentElement.dataset.lang || 'zh'; }
@@ -1062,6 +1077,7 @@
     dom.picker        = document.getElementById('hc-picker');
     dom.result        = document.getElementById('hc-result');
     dom.calcBtn       = document.getElementById('hc-calc-btn');
+    dom.uploadBtn     = document.getElementById('hc-upload-btn');
     dom.modeBtns      = document.querySelectorAll('.hc-mode-btn');
 
     renderPicker();
@@ -1099,9 +1115,17 @@
       render();
       dom.result.innerHTML = '';
       dom.result.classList.add('hidden');
+      _lastResult = null;
+      if (dom.uploadBtn) dom.uploadBtn.disabled = true;
     });
     document.getElementById('hc-buffer-clear').addEventListener('click', () => { S.buffer = []; render(); });
     dom.calcBtn.addEventListener('click', () => Calculator.ready.then(doCalculate));
+    dom.uploadBtn?.addEventListener('click', () => {
+      if (!_lastResult) return;
+      if (!confirm('上传此次和牌的番种数据到数据库？\n若不理解此选项请不要上传。')) return;
+      reportFanStats(_lastResult.fans);
+      showToast('已上传');
+    });
     document.getElementById('hc-dealer-win').addEventListener('change', e => {
       S.dealerWin = e.target.checked;
     });

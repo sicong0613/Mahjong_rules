@@ -811,6 +811,20 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 }
 .hc-calc-btn:disabled { opacity: .4; cursor: not-allowed; }
 .hc-calc-btn:not(:disabled):hover { filter: brightness(1.1); }
+.hc-upload-btn {
+  flex-shrink: 0;
+  padding: 12px 10px;
+  font-size: .82rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hc-upload-btn:disabled { opacity: .4; cursor: not-allowed; }
+.hc-upload-btn:not(:disabled):hover { background: var(--accent); color: #fff; }
 .hc-kb-btn {
   flex-shrink: 0;
   width: 44px;

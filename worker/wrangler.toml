@@ -1,0 +1,24 @@
+name = "mahjong-stats"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+# 部署步骤：
+#   1. wrangler d1 create mahjong-stats          → 填入下方 database_id
+#   2. wrangler kv:namespace create mahjong-rl   → 填入下方 kv id
+#   3. wrangler d1 execute mahjong-stats --file=schema.sql
+#   4. wrangler secret put ADMIN_TOKEN           → 设置管理员 token
+#   5. 把下方 pattern/zone_name 换成你的实际域名
+#   6. wrangler deploy
+
+[[d1_databases]]
+binding     = "DB"
+database_name = "mahjong-stats"
+database_id   = "FILL_IN_AFTER_CREATE"
+
+[[kv_namespaces]]
+binding = "KV"
+id      = "FILL_IN_AFTER_CREATE"
+
+[[routes]]
+pattern   = "yourdomain.com/api/*"
+zone_name = "yourdomain.com"
