@@ -108,6 +108,38 @@
       font-size: .82rem; color: #5a4a20; margin: 10px 0; line-height: 1.65;
     }
 
+    /* ── 可折叠提示框 ── */
+    .collapse-box, .warning-box {
+      border-radius: 0 6px 6px 0;
+      margin: 10px 0;
+      font-size: .82rem;
+      line-height: 1.65;
+    }
+    .collapse-box { background: #fce4ec; border-left: 3px solid #c2185b; color: #5a1a3a; }
+    .warning-box  { background: #ffebee; border-left: 3px solid #b71c1c; color: #5a1a1a; }
+    .collapse-box summary, .warning-box summary {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+    .collapse-box summary::-webkit-details-marker,
+    .warning-box  summary::-webkit-details-marker { display: none; }
+    .collapse-box summary::before, .warning-box summary::before {
+      content: '▶';
+      font-size: .65em;
+      transition: transform .15s;
+      flex-shrink: 0;
+    }
+    .collapse-box[open] summary::before, .warning-box[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .collapse-body { padding: 0 12px 8px; }
+
     /* ── 步骤列表 ── */
     .step-list { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 10px; }
     .step-list li { display: flex; gap: 10px; align-items: flex-start; font-size: .855rem; line-height: 1.7; color: #3a3028; }
@@ -348,6 +380,33 @@
           el.className = 'tip-box';
           el.innerHTML = block.text;
           return el;
+        }
+
+        case 'collapse': {
+          const details = document.createElement('details');
+          details.className = 'collapse-box';
+          const summary = document.createElement('summary');
+          summary.textContent = block.title || '展开';
+          const body = document.createElement('div');
+          body.className = 'collapse-body';
+          body.innerHTML = block.text;
+          details.appendChild(summary);
+          details.appendChild(body);
+          return details;
+        }
+
+        case 'warning': {
+          const details = document.createElement('details');
+          details.className = 'warning-box';
+          details.setAttribute('open', '');
+          const summary = document.createElement('summary');
+          summary.textContent = block.title || '警告';
+          const body = document.createElement('div');
+          body.className = 'collapse-body';
+          body.innerHTML = block.text;
+          details.appendChild(summary);
+          details.appendChild(body);
+          return details;
         }
 
         case 'common-hands': {

@@ -528,9 +528,9 @@
   //   否则 → 番数封顶63后查表（累计役满封顶）
   function lookupPoints(result, selfDrawn, dealerWin) {
     if (!result || result.total < 2) return null;
-    const highFans = (result.fans || []).filter(f => f.fan >= 64);
+    const highFans = (result.fans || []).filter(f => f.value >= 64);
     if (highFans.length > 0) {
-      const mult = highFans.reduce((sum, f) => sum + (f.fan >= 88 ? 2 : 1) * (f.count ?? 1), 0);
+      const mult = highFans.reduce((sum, f) => sum + (f.value >= 88 ? 2 : 1) * (f.count ?? 1), 0);
       const row = {
         ron_d:    YAKUMAN_BASE.ron_d    * mult,
         tsumo_d:  YAKUMAN_BASE.tsumo_d  * mult,

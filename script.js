@@ -176,7 +176,7 @@ function renderAll() {
     const header = document.createElement('div');
     header.className = 'tier-header';
     header.innerHTML = `
-      <span class="tier-fan-badge badge-${fan}">${fan === 0 ? '立直' : fan}</span>
+      <span class="tier-fan-badge badge-${fan}">${fan}</span>
       <span class="tier-label">${label || (fan + ' 番')}</span>
       <span class="tier-count">${items.length} 种</span>
       <span class="tier-arrow">▼</span>
@@ -327,7 +327,7 @@ function buildCard(f) {
   card.innerHTML = `
     <div class="card-main">
       <div class="card-top">
-        <span class="fan-badge badge-${f.fan}">${f.fan === 0 ? '立' : f.fan}</span>
+        <span class="fan-badge badge-${f.fan}">${f.fan}</span>
         <span class="card-name" translate="no">${displayName}</span>${altText}
         <span class="card-source">${f.source}</span>
       </div>
@@ -475,7 +475,7 @@ function showTermPopup(termEl, termName) {
     const popupName = state.lang === 'en' && f.nameEn ? f.nameEn : f.name;
     popup.innerHTML = `
       <div class="term-popup-head">
-        <span class="fan-badge badge-${f.fan} term-popup-badge">${f.fan === 0 ? '立' : f.fan}</span>
+        <span class="fan-badge badge-${f.fan} term-popup-badge">${f.fan}</span>
         <strong class="term-popup-name" translate="no">${popupName}</strong>
       </div>
       <p class="term-popup-desc">${f.desc}</p>

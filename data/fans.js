@@ -902,6 +902,7 @@ const FAN_TIERS = [
   { fan: 4,  label: "" },
   { fan: 2,  label: "" },
   { fan: 1,  label: "" },
+  { fan: 0,  label: "流局与犯规" },
 ];
 
 // 所有可用标签（用于筛选栏）

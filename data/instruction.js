@@ -9,6 +9,8 @@
 //   concept-grid— 概念卡格子（items: [{label, tiles, note}]）
 //   info        — 蓝色提示框（text，支持 HTML）
 //   tip         — 黄色提示框（text，支持 HTML）
+//   collapse    — 洋红可折叠框（默认收起；title 为标题，text 支持 HTML）
+//   warning     — 深红可折叠框（默认展开；title 为标题，text 支持 HTML）
 //   common-hands— 常见和牌格子（items: [{fan, name, desc, tiles}]）
 //
 // tiles 字段格式与 fans.js 相同：
