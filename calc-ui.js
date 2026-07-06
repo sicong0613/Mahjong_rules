@@ -43,7 +43,7 @@
       melds: [],      // [{type, tile, tiles, concealed, promoted}]
       buffer: [],     // 副露/暗杠缓冲
       replacing: null,// {area:'standing'|'win', index} | null
-      selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false,
+      selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false, qiangGang: false,
       riichi: false, riichiType: 'riichi',
       dora: 0, ippatsu: false, prevRedFives: 0, dealerWin: false,
       fan_tian_he: false, fan_di_he: false, fan_ren_he: false,
@@ -602,6 +602,10 @@
       fans.push({ fan: 8, count: 1, value: 8, name: '杠上开铳' });
     }
 
+    if (S.qiangGang) {
+      fans.push({ fan: 8, count: 1, value: 8, name: '抢杠和' });
+    }
+
     return fans === result.fans ? result : { ...result, fans };
   }
 
@@ -1010,7 +1014,7 @@
     if (!S) {
       // 首次打开：初始化状态和控件
       resetState();
-      ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong',
+      ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong','hc-qiang-gang',
        'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
         const el = document.getElementById(id); el.checked = false; el.disabled = false;
       });
@@ -1123,7 +1127,7 @@
     });
     document.getElementById('hc-clear-all').addEventListener('click', () => {
       resetState();
-      ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last',
+      ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong','hc-qiang-gang',
        'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
         const el = document.getElementById(id); el.checked = false; el.disabled = false;
       });
@@ -1236,6 +1240,9 @@
     });
     document.getElementById('hc-ippatsu').addEventListener('change', e => {
       S.ippatsu = e.target.checked;
+    });
+    document.getElementById('hc-qiang-gang').addEventListener('change', e => {
+      S.qiangGang = e.target.checked;
     });
     document.getElementById('hc-gang-kai-chong').addEventListener('change', e => {
       S.gangKaiChong = e.target.checked;
