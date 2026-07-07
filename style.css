@@ -944,6 +944,15 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 }
 .hc-toast.hc-toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* 流局满贯：牌区与键盘区锁定 */
+.hc-tiles-locked #hc-standing-area,
+.hc-tiles-locked #hc-win-area,
+.hc-tiles-locked #hc-meld-area,
+.hc-tiles-locked .hc-bottom {
+  pointer-events: none;
+  opacity: 0.35;
+}
+
 /* 深色模式适配 */
 @media (prefers-color-scheme: dark) {
   .hc-tile { box-shadow: 0 0 0 1px #000, 0 0 0 3px rgba(255,255,255,.35); }

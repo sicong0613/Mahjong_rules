@@ -46,7 +46,7 @@
       selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false, qiangGang: false,
       riichi: false, riichiType: 'riichi',
       dora: 0, ippatsu: false, prevRedFives: 0, dealerWin: false,
-      fan_tian_he: false, fan_di_he: false, fan_ren_he: false,
+      fan_tian_he: false, fan_di_he: false, fan_ren_he: false, liujuManguan: false,
       flowers: 0, prevalentWind: 0, seatWind: 0,
     };
   }
@@ -247,7 +247,7 @@
     updatePickerCounts();
     updateKongWinCheckbox();
     updateDoraDropdown();
-    dom.calcBtn.disabled = !S.winTile || S.standing.length === 0 || !!S.replacing;
+    dom.calcBtn.disabled = !S.liujuManguan && (!S.winTile || S.standing.length === 0 || !!S.replacing);
   }
 
   function countRedFives() {
@@ -874,6 +874,13 @@
   let _lastResult = null;
 
   function doCalculate() {
+    if (S.liujuManguan) {
+      const r = { total: 48, fans: [{ fan: 48, count: 1, value: 48, name: '流局满贯' }] };
+      renderResult(r);
+      _lastResult = r;
+      if (dom.uploadBtn) dom.uploadBtn.disabled = false;
+      return;
+    }
     const packs = S.melds.map(m => {
       if (m.type === 'chow')                return Calculator.makePackRaw(1, 1, m.tile);
       if (m.type === 'pung')                return Calculator.makePackRaw(1, 2, m.tile);
@@ -1015,7 +1022,7 @@
       // 首次打开：初始化状态和控件
       resetState();
       ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong','hc-qiang-gang',
-       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
+       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-liuju-manguan','hc-dora','hc-ippatsu'].forEach(id => {
         const el = document.getElementById(id); el.checked = false; el.disabled = false;
       });
       const riichiTypeSel = document.getElementById('hc-riichi-type');
@@ -1128,7 +1135,7 @@
     document.getElementById('hc-clear-all').addEventListener('click', () => {
       resetState();
       ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong','hc-qiang-gang',
-       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-dora','hc-ippatsu'].forEach(id => {
+       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-liuju-manguan','hc-dora','hc-ippatsu'].forEach(id => {
         const el = document.getElementById(id); el.checked = false; el.disabled = false;
       });
       const riichiTypeSel = document.getElementById('hc-riichi-type');
@@ -1214,6 +1221,34 @@
         }
         applyFanToConditions(fanId, e.target.checked);
       });
+    });
+    document.getElementById('hc-liuju-manguan').addEventListener('change', e => {
+      S.liujuManguan = e.target.checked;
+      const maskIds = [
+        'hc-self-drawn','hc-last-tile','hc-kong-win',
+        'hc-wall-last','hc-river-last','hc-gang-kai-chong','hc-qiang-gang',
+        'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he',
+        'hc-dora','hc-ippatsu','hc-riichi-type','hc-dora-count',
+        'hc-flowers','hc-prevalent','hc-seat',
+      ];
+      const page = document.getElementById('hand-calc-page');
+      if (S.liujuManguan) {
+        S.standing = []; S.winTile = null; S.melds = []; S.buffer = []; S.replacing = null;
+        S.selfDrawn = true;
+        document.getElementById('hc-self-drawn').checked = true;
+        page.classList.add('hc-tiles-locked');
+        render();
+        maskIds.forEach(id => { document.getElementById(id).disabled = true; });
+      } else {
+        S.selfDrawn = false;
+        document.getElementById('hc-self-drawn').checked = false;
+        page.classList.remove('hc-tiles-locked');
+        maskIds.forEach(id => { document.getElementById(id).disabled = false; });
+        document.getElementById('hc-ippatsu').disabled    = !S.riichi;
+        document.getElementById('hc-riichi-type').disabled = !S.riichi;
+        document.getElementById('hc-dora-count').disabled  = !S.dora;
+        render();
+      }
     });
     document.getElementById('hc-riichi').addEventListener('change', e => {
       S.riichi = e.target.checked;
