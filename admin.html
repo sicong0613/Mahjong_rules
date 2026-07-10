@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>上传记录管理 — 麻将番种统计</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { padding: 20px 14px 60px; max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; margin-bottom: 4px; }
+    .sub { color: var(--text-muted); font-size: .82rem; margin-bottom: 16px; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+    .bar input[type=password], .bar input[type=number] {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface); color: inherit; font-size: .85rem;
+    }
+    .bar input[type=password] { flex: 1; min-width: 220px; }
+    .bar input[type=number] { width: 90px; }
+    .bar button {
+      padding: 6px 14px; border: 1px solid var(--accent); background: var(--accent);
+      color: #fff; border-radius: 6px; cursor: pointer; font-size: .85rem;
+    }
+    .bar button.ghost { background: transparent; color: var(--accent); }
+    .summary { font-size: .85rem; margin-bottom: 10px; color: var(--text-muted); }
+    .msg { font-size: .85rem; margin: 10px 0; }
+    .msg.err { color: #c0392b; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: .8rem; }
+    th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: var(--surface); position: sticky; top: 0; }
+    td.time { white-space: nowrap; }
+    td.time .abbr { color: var(--text-muted); }
+    td.time .utc { display: block; color: var(--text-muted); font-size: .72rem; }
+    td.geo { white-space: nowrap; font-size: .78rem; }
+    .fans span { display: inline-block; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 6px; margin: 1px 2px; white-space: nowrap; }
+    .tiles { display: flex; flex-wrap: wrap; gap: 1px; align-items: center; min-width: 200px; }
+    .tiles img { width: 22px; height: 29px; object-fit: contain; }
+    .tiles .win { outline: 2px solid var(--accent); border-radius: 3px; }
+    .tiles .code { font-size: .72rem; color: var(--text-muted); margin-right: 3px; }
+    td.ip { white-space: nowrap; font-family: monospace; font-size: .76rem; }
+    td.ip button { display: block; margin-top: 4px; font-size: .7rem; padding: 2px 6px;
+      border: 1px solid #c0392b; color: #c0392b; background: transparent; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>上传记录管理</h1>
+  <p class="sub">每行 = 一副上传的和牌。此页仅供核查误传/刷量，需管理员 token；数据来自 <code>/api/fan-logs</code>，不对外公开。</p>
+
+  <div class="bar">
+    <input id="token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off">
+    <input id="limit" type="number" value="200" min="1" max="1000" title="加载条数">
+    <button id="load">加载</button>
+    <button id="forget" class="ghost" title="清除本机保存的 token">忘记 token</button>
+  </div>
+
+  <div id="summary" class="summary"></div>
+  <div id="msg" class="msg"></div>
+
+  <div class="table-wrap">
+    <table id="tbl" hidden>
+      <thead>
+        <tr>
+          <th>本地时间（含夏令时）</th><th>地点</th><th>番种</th><th>牌型</th><th>IP</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const tokenEl = $('token'), limitEl = $('limit');
+
+    // 记住 token（仅存本机 localStorage）
+    tokenEl.value = localStorage.getItem('adminToken') || '';
+    $('forget').onclick = () => { localStorage.removeItem('adminToken'); tokenEl.value = ''; };
+
+    function fmtParse(s, fallback) { try { return JSON.parse(s); } catch { return fallback; } }
+
+    function timeCell(ts, geo) {
+      const td = document.createElement('td');
+      td.className = 'time';
+      if (geo && geo.local) {
+        td.innerHTML = `${geo.local} <span class="abbr">${geo.tzAbbr || ''}</span>` +
+          `<span class="utc">上传(UTC): ${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}</span>`;
+      } else {
+        td.innerHTML = `<span class="abbr">无时区</span>` +
+          `<span class="utc">上传(UTC): ${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}</span>`;
+      }
+      return td;
+    }
+
+    function geoCell(geo) {
+      const td = document.createElement('td');
+      td.className = 'geo';
+      if (!geo || (!geo.country && !geo.city)) { td.textContent = '—'; return td; }
+      const parts = [geo.country, geo.region, geo.city].filter(Boolean);
+      td.textContent = parts.join(' / ') + (geo.tz ? `\n${geo.tz}` : '');
+      td.title = geo.tz || '';
+      return td;
+    }
+
+    function tilesCell(tiles) {
+      const td = document.createElement('td');
+      const box = document.createElement('div');
+      box.className = 'tiles';
+      if (!tiles || tiles.length === 0) {
+        box.innerHTML = '<span class="code">（无牌型）</span>';
+      } else {
+        tiles.forEach((code, i) => {
+          const img = document.createElement('img');
+          img.src = `img/tiles/${code}.svg`;
+          img.alt = code;
+          img.title = code;
+          if (i === tiles.length - 1) img.className = 'win'; // 和牌张在最后
+          img.onerror = () => { img.replaceWith(Object.assign(document.createElement('span'),
+            { className: 'code', textContent: code })); };
+          box.appendChild(img);
+        });
+      }
+      td.appendChild(box);
+      return td;
+    }
+
+    function fansCell(fans) {
+      const td = document.createElement('td');
+      td.className = 'fans';
+      (fans || []).forEach(n => {
+        const s = document.createElement('span'); s.textContent = n; td.appendChild(s);
+      });
+      return td;
+    }
+
+    function ipCell(ip) {
+      const td = document.createElement('td');
+      td.className = 'ip';
+      td.append(ip || 'unknown');
+      const btn = document.createElement('button');
+      btn.textContent = '删除此 IP 全部';
+      btn.onclick = () => deleteIp(ip);
+      td.appendChild(btn);
+      return td;
+    }
+
+    async function load() {
+      const token = tokenEl.value.trim();
+      if (!token) { showMsg('请先填写 ADMIN_TOKEN', true); return; }
+      localStorage.setItem('adminToken', token);
+      showMsg('加载中…');
+      const limit = Math.min(Math.max(parseInt(limitEl.value) || 200, 1), 1000);
+      try {
+        const [logsRes, statsRes] = await Promise.all([
+          fetch(`/api/fan-logs?token=${encodeURIComponent(token)}&limit=${limit}`),
+          fetch('/api/fan-stats'),
+        ]);
+        if (logsRes.status === 401) { showMsg('token 错误或未设置 ADMIN_TOKEN（401）', true); return; }
+        if (!logsRes.ok) { showMsg(`加载失败：HTTP ${logsRes.status}`, true); return; }
+        const logs = await logsRes.json();
+        const stats = statsRes.ok ? await statsRes.json() : null;
+        render(logs, stats);
+        showMsg('');
+      } catch (e) { showMsg('网络错误：' + e.message, true); }
+    }
+
+    function render(logs, stats) {
+      const rows = $('rows'); rows.innerHTML = '';
+      logs.forEach(r => {
+        const tr = document.createElement('tr');
+        const geo = fmtParse(r.geo, {});
+        tr.appendChild(timeCell(r.ts, geo));
+        tr.appendChild(geoCell(geo));
+        tr.appendChild(fansCell(fmtParse(r.fans, [])));
+        tr.appendChild(tilesCell(fmtParse(r.tiles, [])));
+        tr.appendChild(ipCell(r.ip));
+        rows.appendChild(tr);
+      });
+      $('tbl').hidden = logs.length === 0;
+      const n = stats ? stats.total : '?';
+      $('summary').textContent = `本次显示 ${logs.length} 条；数据库累计和牌总副数 n = ${n}`;
+      if (logs.length === 0) showMsg('暂无记录');
+    }
+
+    async function deleteIp(ip) {
+      const token = tokenEl.value.trim();
+      if (!ip || !token) return;
+      if (!confirm(`确定删除 IP ${ip} 的全部上传记录，并重算番种计数？此操作不可撤销。`)) return;
+      try {
+        const res = await fetch(`/api/fan-logs?token=${encodeURIComponent(token)}&ip=${encodeURIComponent(ip)}`,
+          { method: 'DELETE' });
+        if (!res.ok) { showMsg(`删除失败：HTTP ${res.status}`, true); return; }
+        showMsg(`已删除 ${ip} 的记录`);
+        load();
+      } catch (e) { showMsg('删除出错：' + e.message, true); }
+    }
+
+    function showMsg(text, isErr) {
+      const m = $('msg'); m.textContent = text; m.className = 'msg' + (isErr ? ' err' : '');
+    }
+
+    $('load').onclick = load;
+    tokenEl.addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+    if (tokenEl.value) load();
+  </script>
+</body>
+</html>

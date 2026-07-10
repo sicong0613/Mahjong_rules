@@ -874,15 +874,14 @@
   let _lastResult = null;
   let _lastTiles  = [];   // 上次计算的整副牌牌码，用于上报
 
-  // 收集当前整副牌的牌码（立牌 + 和牌张 + 副露/杠），红五记为 0m/0p/0s
+  // 收集当前整副牌的牌码（立牌 + 副露/杠 + 和牌张，和牌张放最后）
+  // code 为数字位域，用 tileToSvg 转成字符串码：1m/0p/5s/E/Z…（红五为 0m/0p/0s）
   function currentHandTiles() {
     const out = [];
-    const push = (code, isRed) => {
-      out.push(isRed && /^5[mps]$/.test(code) ? '0' + code[1] : code);
-    };
+    const push = (code, isRed) => out.push(tileToSvg(code, isRed).replace('.svg', ''));
     for (const t of S.standing) if (t) push(t.code, t.isRed);
-    if (S.winTile) push(S.winTile.code, S.winTile.isRed);
     for (const meld of S.melds) for (const t of meld.tiles) push(t.code, t.isRed);
+    if (S.winTile) push(S.winTile.code, S.winTile.isRed);
     return out;
   }
 
