@@ -1,7 +1,9 @@
 // Cloudflare Worker — 麻将番型统计
+// 统计单位：一副和牌。fan_counts.count = 含该番种的牌副数(m)，
+// total = upload_log 行数(n)，前端展示的频率即 m/n。
 // 接口：
 //   GET  /api/fan-stats                          → 返回全量番型计数（公开）
-//   POST /api/fan-stats  body:{fans:[...]}       → 上报一次和牌（有限流）
+//   POST /api/fan-stats  body:{fans:[...],tiles:[...]} → 上报一副和牌（有限流）
 //   GET  /api/fan-stats/export?token=&format=    → 导出 fan_counts（json/csv，管理员）
 //   PUT  /api/fan-stats/import?token=            → 覆盖导入 fan_counts（管理员）
 //   GET  /api/fan-logs?token=&limit=&offset=&ip= → 审计日志（管理员）
@@ -16,8 +18,10 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const MAX_FANS_PER_UPLOAD = 25;   // 单次最多番种数
+const MAX_FANS_PER_UPLOAD = 25;   // 单副最多番种数
 const MAX_FAN_NAME_LEN   = 12;   // 番种名最大字符数
+const MAX_TILES_PER_HAND = 20;   // 单副最多牌数（含杠的第 4 张，留余量）
+const MAX_TILE_CODE_LEN  = 3;    // 牌码最大字符数（如 1m / 0p）
 const RATE_LIMIT_PER_HOUR = 20;  // 同一 IP 每小时最多上报次数
 
 export default {
@@ -78,19 +82,26 @@ async function postStats(request, env) {
   if (!Array.isArray(raw) || raw.length === 0)
     return json({ error: 'fans must be non-empty array' }, 400);
 
-  const fans = raw
-    .filter(n => typeof n === 'string' && n.length > 0 && n.length <= MAX_FAN_NAME_LEN)
-    .slice(0, MAX_FANS_PER_UPLOAD);
+  // 单副内番种去重：统计以「副」为单位，含该番的副数最多 +1
+  const fans = [...new Set(
+    raw.filter(n => typeof n === 'string' && n.length > 0 && n.length <= MAX_FAN_NAME_LEN)
+  )].slice(0, MAX_FANS_PER_UPLOAD);
   if (fans.length === 0) return json({ error: 'no valid fan names' }, 400);
 
-  // 写审计日志
+  // 牌型（可选）：整副牌的牌码
+  const rawTiles = Array.isArray(body?.tiles) ? body.tiles : [];
+  const tiles = rawTiles
+    .filter(t => typeof t === 'string' && t.length > 0 && t.length <= MAX_TILE_CODE_LEN)
+    .slice(0, MAX_TILES_PER_HAND);
+
+  // 写审计日志（一行 = 一副牌）
   const ts = Date.now();
   await env.DB
-    .prepare('INSERT INTO upload_log (ts, ip, fans) VALUES (?, ?, ?)')
-    .bind(ts, ip, JSON.stringify(fans))
+    .prepare('INSERT INTO upload_log (ts, ip, tiles, fans) VALUES (?, ?, ?, ?)')
+    .bind(ts, ip, JSON.stringify(tiles), JSON.stringify(fans))
     .run();
 
-  // 原子累加计数（D1 batch）
+  // 原子累加计数（D1 batch），fans 已按副去重
   await env.DB.batch(
     fans.map(name =>
       env.DB
@@ -162,10 +173,10 @@ async function getLogs(request, env) {
 
   const { results } = ip
     ? await env.DB
-        .prepare('SELECT id, ts, ip, fans FROM upload_log WHERE ip = ? ORDER BY ts DESC LIMIT ? OFFSET ?')
+        .prepare('SELECT id, ts, ip, tiles, fans FROM upload_log WHERE ip = ? ORDER BY ts DESC LIMIT ? OFFSET ?')
         .bind(ip, limit, offset).all()
     : await env.DB
-        .prepare('SELECT id, ts, ip, fans FROM upload_log ORDER BY ts DESC LIMIT ? OFFSET ?')
+        .prepare('SELECT id, ts, ip, tiles, fans FROM upload_log ORDER BY ts DESC LIMIT ? OFFSET ?')
         .bind(limit, offset).all();
 
   return json(results);
@@ -182,14 +193,17 @@ async function deleteLogs(request, env) {
 
   await env.DB.prepare('DELETE FROM upload_log WHERE ip = ?').bind(ip).run();
 
-  // 从剩余日志重算 fan_counts
+  // 从剩余日志重算 fan_counts（以「副」为单位：每副内番种去重后再计数）
   await env.DB.batch([
     env.DB.prepare('DELETE FROM fan_counts'),
     env.DB.prepare(`
       INSERT INTO fan_counts (name, count)
-      SELECT j.value, COUNT(*) AS count
-      FROM upload_log, json_each(upload_log.fans) j
-      GROUP BY j.value
+      SELECT value AS name, COUNT(*) AS count
+      FROM (
+        SELECT DISTINCT upload_log.id AS hid, j.value AS value
+        FROM upload_log, json_each(upload_log.fans) j
+      )
+      GROUP BY value
     `),
   ]);
 

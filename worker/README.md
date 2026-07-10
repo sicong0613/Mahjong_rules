@@ -29,22 +29,34 @@
 
 ---
 
+## 统计单位
+
+统计**以「一副和牌」为单位**：
+
+- `upload_log` 一行 = 一副和牌，记录该副的牌型（`tiles`）与去重后的番种（`fans`）。
+- `total` = `upload_log` 行数 = 总副数 **n**。
+- `fan_counts.count` = 含该番种的**牌副数** **m**（同一副内重复的番种只计一次）。
+- 前端展示的频率 = `count / total` = **m/n**。
+
 ## 接口
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | `GET`    | `/api/fan-stats` | 公开 | 返回 `{ fans: [{name, count}], total }` |
-| `POST`   | `/api/fan-stats` | 限流 | body `{ fans: ["立直", ...] }`，记录一次和牌 |
-| `GET`    | `/api/fan-logs?token=&limit=&offset=&ip=` | 管理员 | 审计日志 |
+| `POST`   | `/api/fan-stats` | 限流 | body `{ fans: ["立直", ...], tiles: ["1m","2m", ...] }`，记录一副和牌（`tiles` 可选） |
+| `GET`    | `/api/fan-logs?token=&limit=&offset=&ip=` | 管理员 | 审计日志（含 `tiles`、`fans`、`ip`） |
 | `DELETE` | `/api/fan-logs?token=&ip=` | 管理员 | 删除某 IP 的记录并重算计数 |
 
 校验/限流参数（在 `index.js` 顶部可调）：
 
-- `MAX_FANS_PER_UPLOAD = 25` 单次最多番种数
+- `MAX_FANS_PER_UPLOAD = 25` 单副最多番种数
 - `MAX_FAN_NAME_LEN = 12` 番种名最大字符数
+- `MAX_TILES_PER_HAND = 20` 单副最多牌数
+- `MAX_TILE_CODE_LEN = 3` 牌码最大字符数（如 `1m` / `0p`，红五记作 `0m/0p/0s`）
 - `RATE_LIMIT_PER_HOUR = 20` 同一 IP 每小时最多上报次数
 
 > IP 由 Cloudflare 的 `CF-Connecting-IP` 头在服务端记录，前端不发送 IP。
+> 公开的 `GET /api/fan-stats` 不含 IP；IP 只能通过管理员接口 `/api/fan-logs` 查看。
 
 ---
 
@@ -90,16 +102,41 @@ wrangler deploy
 
 ---
 
+## 数据库迁移（已部署过、已有数据的库）
+
+新增了 `upload_log.tiles` 列，并把计数语义改为「以副为单位」。对**已存在**的
+库，`CREATE TABLE IF NOT EXISTS` 不会自动加列，需手动迁移一次：
+
+```bash
+# 1. 给旧表补上 tiles 列（历史行的牌型未知，置空数组）
+wrangler d1 execute mahjong-stats --remote \
+  --command "ALTER TABLE upload_log ADD COLUMN tiles TEXT NOT NULL DEFAULT '[]';"
+
+# 2. 按「每副去重」重算 fan_counts，让历史数据与新语义一致
+wrangler d1 execute mahjong-stats --remote --command "
+DELETE FROM fan_counts;
+INSERT INTO fan_counts (name, count)
+SELECT value AS name, COUNT(*) AS count FROM (
+  SELECT DISTINCT upload_log.id AS hid, j.value AS value
+  FROM upload_log, json_each(upload_log.fans) j
+) GROUP BY value;"
+```
+
+> 步骤 2 与 `DELETE /api/fan-logs` 触发的重算逻辑一致，可安全重复执行。
+> 历史行的 `tiles` 为 `[]`（当时未采集），新上报的和牌会带上真实牌型。
+
+---
+
 ## 验证
 
 ```bash
 # 应返回 {"fans":[],"total":0}（刚建库时为空）
 curl https://majiang.sicongwang.com/api/fan-stats
 
-# 模拟一次上报
+# 模拟一次上报（tiles 可选）
 curl -X POST https://majiang.sicongwang.com/api/fan-stats \
   -H 'Content-Type: application/json' \
-  -d '{"fans":["立直","平和"]}'
+  -d '{"fans":["立直","平和"],"tiles":["1m","2m","3m","4p","5p","6p","7s","8s","9s","2z","2z","5m","5m","5m"]}'
 
 # 再查一次，total 应为 1，两个番型 count 各为 1
 curl https://majiang.sicongwang.com/api/fan-stats

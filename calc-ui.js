@@ -872,12 +872,26 @@
 
   // ─── 计算 ──────────────────────────────────────────────────────
   let _lastResult = null;
+  let _lastTiles  = [];   // 上次计算的整副牌牌码，用于上报
+
+  // 收集当前整副牌的牌码（立牌 + 和牌张 + 副露/杠），红五记为 0m/0p/0s
+  function currentHandTiles() {
+    const out = [];
+    const push = (code, isRed) => {
+      out.push(isRed && /^5[mps]$/.test(code) ? '0' + code[1] : code);
+    };
+    for (const t of S.standing) if (t) push(t.code, t.isRed);
+    if (S.winTile) push(S.winTile.code, S.winTile.isRed);
+    for (const meld of S.melds) for (const t of meld.tiles) push(t.code, t.isRed);
+    return out;
+  }
 
   function doCalculate() {
     if (S.liujuManguan) {
       const r = { total: 48, fans: [{ fan: 48, count: 1, value: 48, name: '流局满贯' }] };
       renderResult(r);
       _lastResult = r;
+      _lastTiles  = [];   // 流局满贯无牌型
       if (dom.uploadBtn) dom.uploadBtn.disabled = false;
       return;
     }
@@ -951,17 +965,18 @@
     }
     renderResult(result);
     _lastResult = result.error ? null : result;
+    _lastTiles  = result.error ? [] : currentHandTiles();
     if (dom.uploadBtn) dom.uploadBtn.disabled = !_lastResult;
     return result;
   }
 
-  function reportFanStats(fans) {
+  function reportFanStats(fans, tiles) {
     const names = fans.map(f => f.name).filter(Boolean);
     if (names.length === 0) return;
     fetch('/api/fan-stats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fans: names }),
+      body: JSON.stringify({ fans: names, tiles: tiles || [] }),
     }).catch(() => {});
   }
 
@@ -1150,6 +1165,7 @@
       dom.result.innerHTML = '';
       dom.result.classList.add('hidden');
       _lastResult = null;
+      _lastTiles  = [];
       if (dom.uploadBtn) dom.uploadBtn.disabled = true;
     });
     document.getElementById('hc-buffer-clear').addEventListener('click', () => { S.buffer = []; render(); });
@@ -1157,7 +1173,7 @@
     dom.uploadBtn?.addEventListener('click', () => {
       if (!_lastResult) return;
       if (!confirm('上传此次和牌的番种数据到数据库？\n若不理解此选项请不要上传。')) return;
-      reportFanStats(_lastResult.fans);
+      reportFanStats(_lastResult.fans, _lastTiles);
       showToast('已上传');
     });
     document.getElementById('hc-dealer-win').addEventListener('change', e => {
