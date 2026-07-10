@@ -622,15 +622,14 @@
 
     linkifyText(main);
 
-    // ── 拉取统计，补充已上传番种、重排并显示占比 ──────────
+    // ── 拉取统计：补充已上传番种、只显示有上报数据的番种、重排并显示占比 ──
     fetch('/api/fan-stats')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (!data) return;
+        if (!data) return;  // 接口不可用时保底：保持全部显示
         const fans  = Array.isArray(data) ? data : (data.fans  || []);
         const total = Array.isArray(data) ? 0     : (data.total || 0);
-        if (fans.length === 0) return;
-        const freq = Object.fromEntries(fans.map(d => [d.name, d.count]));
+        const freq  = Object.fromEntries(fans.map(d => [d.name, d.count]));
 
         const grid = document.querySelector('.common-hands-grid');
         if (!grid) return;
@@ -673,7 +672,15 @@
           grid.appendChild(card);
         });
 
-        // 重排
+        // 只保留有上报数据（count > 0）的番种，其余隐藏
+        let shown = 0;
+        grid.querySelectorAll('.common-hand-card').forEach(card => {
+          const has = (freq[card.dataset.fanName] || 0) > 0;
+          card.hidden = !has;
+          if (has) shown++;
+        });
+
+        // 按频次从高到低重排
         [...grid.children]
           .sort((a, b) => (freq[b.dataset.fanName] || 0) - (freq[a.dataset.fanName] || 0))
           .forEach(c => grid.appendChild(c));
@@ -684,6 +691,21 @@
             const count = freq[el.closest('.common-hand-card')?.dataset.fanName] || 0;
             el.textContent = count ? (count / total * 100).toFixed(1) + '%' : '';
           });
+        }
+
+        // 全部无上报数据时给个提示
+        let note = document.getElementById('common-hands-empty');
+        if (shown === 0) {
+          if (!note) {
+            note = document.createElement('p');
+            note.id = 'common-hands-empty';
+            note.style.cssText = 'color: var(--text-muted); margin-top: 12px;';
+            note.textContent = '暂无上传数据，快到计番器上传你的和牌吧。';
+            grid.parentNode.insertBefore(note, grid.nextSibling);
+          }
+          note.hidden = false;
+        } else if (note) {
+          note.hidden = true;
         }
       })
       .catch(() => {});
