@@ -118,7 +118,7 @@ async function postStats(request, env) {
 
 // ── GET /api/fan-stats/export ─────────────────────────────────────
 async function exportStats(request, env) {
-  if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+  if (!checkAdmin(request, env)) return adminError(env);
 
   const { results } = await env.DB
     .prepare('SELECT name, count FROM fan_counts ORDER BY count DESC')
@@ -140,7 +140,7 @@ async function exportStats(request, env) {
 
 // ── PUT /api/fan-stats/import ─────────────────────────────────────
 async function importStats(request, env) {
-  if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+  if (!checkAdmin(request, env)) return adminError(env);
 
   let body;
   try { body = await request.json(); } catch { return json({ error: 'invalid json' }, 400); }
@@ -167,7 +167,7 @@ async function importStats(request, env) {
 
 // ── GET /api/fan-logs ──────────────────────────────────────────────
 async function getLogs(request, env) {
-  if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+  if (!checkAdmin(request, env)) return adminError(env);
 
   const url    = new URL(request.url);
   const limit  = Math.min(parseInt(url.searchParams.get('limit')  || '200'), 1000);
@@ -188,7 +188,7 @@ async function getLogs(request, env) {
 // ── DELETE /api/fan-logs ───────────────────────────────────────────
 // 删除指定 IP 的所有日志，并从剩余日志重算番型计数
 async function deleteLogs(request, env) {
-  if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+  if (!checkAdmin(request, env)) return adminError(env);
 
   const url = new URL(request.url);
   const ip  = url.searchParams.get('ip');
@@ -259,4 +259,11 @@ function checkAdmin(request, env) {
   const url   = new URL(request.url);
   const token = url.searchParams.get('token');
   return token && token === env.ADMIN_TOKEN;
+}
+
+// 401 响应，附带可诊断但不泄露 token 的原因
+function adminError(env) {
+  if (!env.ADMIN_TOKEN)
+    return json({ error: 'ADMIN_TOKEN not configured on this Worker (add the secret and Deploy a new version)' }, 401);
+  return json({ error: 'unauthorized: token does not match ADMIN_TOKEN' }, 401);
 }
