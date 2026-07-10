@@ -2,12 +2,17 @@
 // 接口：
 //   GET  /api/fan-stats                          → 返回全量番型计数（公开）
 //   POST /api/fan-stats  body:{fans:[...]}       → 上报一次和牌（有限流）
+//   GET  /api/fan-stats/export?token=&format=    → 导出 fan_counts（json/csv，管理员）
+//   PUT  /api/fan-stats/import?token=            → 覆盖导入 fan_counts（管理员）
 //   GET  /api/fan-logs?token=&limit=&offset=&ip= → 审计日志（管理员）
 //   DELETE /api/fan-logs?token=&ip=              → 清除某 IP 的记录并重算计数
+//
+// 注意：import 直接覆写 fan_counts，不触碰 upload_log。
+// 若之后调用 DELETE /api/fan-logs 触发重算，手动导入的数据会被覆盖，需重新导入。
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
@@ -23,6 +28,12 @@ export default {
     const path = url.pathname.replace(/\/+$/, ''); // strip trailing slash
 
     try {
+      if (path.endsWith('/api/fan-stats/export')) {
+        if (request.method === 'GET') return await exportStats(request, env);
+      }
+      if (path.endsWith('/api/fan-stats/import')) {
+        if (request.method === 'PUT') return await importStats(request, env);
+      }
       if (path.endsWith('/api/fan-stats')) {
         if (request.method === 'GET')  return await getStats(env);
         if (request.method === 'POST') return await postStats(request, env);
@@ -89,6 +100,55 @@ async function postStats(request, env) {
   );
 
   return json({ ok: true });
+}
+
+// ── GET /api/fan-stats/export ─────────────────────────────────────
+async function exportStats(request, env) {
+  if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+
+  const { results } = await env.DB
+    .prepare('SELECT name, count FROM fan_counts ORDER BY count DESC')
+    .all();
+
+  const fmt = new URL(request.url).searchParams.get('format') || 'json';
+  if (fmt === 'csv') {
+    const csv = 'name,count\n' + results.map(r => `"${r.name}",${r.count}`).join('\n');
+    return new Response(csv, {
+      headers: { ...CORS, 'Content-Type': 'text/csv; charset=utf-8',
+                 'Content-Disposition': 'attachment; filename="fan_counts.csv"' },
+    });
+  }
+  return new Response(JSON.stringify(results, null, 2), {
+    headers: { ...CORS, 'Content-Type': 'application/json',
+               'Content-Disposition': 'attachment; filename="fan_counts.json"' },
+  });
+}
+
+// ── PUT /api/fan-stats/import ─────────────────────────────────────
+async function importStats(request, env) {
+  if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'invalid json' }, 400); }
+
+  const rows = Array.isArray(body) ? body : body?.fans;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return json({ error: 'expected non-empty array [{name, count}]' }, 400);
+
+  const valid = rows.filter(r =>
+    typeof r.name === 'string' && r.name.length > 0 && r.name.length <= MAX_FAN_NAME_LEN &&
+    Number.isInteger(r.count) && r.count >= 0
+  );
+  if (valid.length === 0) return json({ error: 'no valid rows' }, 400);
+
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM fan_counts'),
+    ...valid.map(r =>
+      env.DB.prepare('INSERT INTO fan_counts (name, count) VALUES (?, ?)').bind(r.name, r.count)
+    ),
+  ]);
+
+  return json({ ok: true, imported: valid.length });
 }
 
 // ── GET /api/fan-logs ──────────────────────────────────────────────
