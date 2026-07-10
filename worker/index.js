@@ -94,11 +94,14 @@ async function postStats(request, env) {
     .filter(t => typeof t === 'string' && t.length > 0 && t.length <= MAX_TILE_CODE_LEN)
     .slice(0, MAX_TILES_PER_HAND);
 
+  // 上传时间 + 按 IP 判定的地点/时区（Cloudflare 边缘提供，服务端记录）
+  const ts  = Date.now();
+  const geo = buildGeo(request.cf, ts);
+
   // 写审计日志（一行 = 一副牌）
-  const ts = Date.now();
   await env.DB
-    .prepare('INSERT INTO upload_log (ts, ip, tiles, fans) VALUES (?, ?, ?, ?)')
-    .bind(ts, ip, JSON.stringify(tiles), JSON.stringify(fans))
+    .prepare('INSERT INTO upload_log (ts, ip, tiles, fans, geo) VALUES (?, ?, ?, ?, ?)')
+    .bind(ts, ip, JSON.stringify(tiles), JSON.stringify(fans), JSON.stringify(geo))
     .run();
 
   // 原子累加计数（D1 batch），fans 已按副去重
@@ -173,10 +176,10 @@ async function getLogs(request, env) {
 
   const { results } = ip
     ? await env.DB
-        .prepare('SELECT id, ts, ip, tiles, fans FROM upload_log WHERE ip = ? ORDER BY ts DESC LIMIT ? OFFSET ?')
+        .prepare('SELECT id, ts, ip, tiles, fans, geo FROM upload_log WHERE ip = ? ORDER BY ts DESC LIMIT ? OFFSET ?')
         .bind(ip, limit, offset).all()
     : await env.DB
-        .prepare('SELECT id, ts, ip, tiles, fans FROM upload_log ORDER BY ts DESC LIMIT ? OFFSET ?')
+        .prepare('SELECT id, ts, ip, tiles, fans, geo FROM upload_log ORDER BY ts DESC LIMIT ? OFFSET ?')
         .bind(limit, offset).all();
 
   return json(results);
@@ -208,6 +211,40 @@ async function deleteLogs(request, env) {
   ]);
 
   return json({ ok: true });
+}
+
+// ── 地点 / 时区 ────────────────────────────────────────────────────
+// 从 Cloudflare 的 request.cf（按访客 IP 判定）取地点与 IANA 时区，
+// 再用 Intl 把 UTC 时刻换算成访客本地时间——Intl 会自动应用夏令时。
+function buildGeo(cf, ts) {
+  cf = cf || {};
+  const tz = cf.timezone || null;                 // IANA，如 America/New_York
+  const geo = {
+    country: cf.country || null,                  // 如 US / CN
+    region:  cf.region  || null,                  // 省 / 州
+    city:    cf.city    || null,
+    tz,                                           // IANA 时区名
+    offset:  null,                                // 该时刻相对 UTC 的分钟数（含夏令时）
+    local:   null,                                // 本地墙钟时间 YYYY-MM-DD HH:mm:ss
+    tzAbbr:  null,                                // 时区缩写/偏移，如 EDT / GMT-4（体现夏令时）
+  };
+  if (tz) {
+    try {
+      const d = new Date(ts);
+      const p = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz, hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      }).formatToParts(d).reduce((a, x) => (a[x.type] = x.value, a), {});
+      const hh = p.hour === '24' ? '00' : p.hour;   // en-CA 可能返回 24 时
+      geo.local  = `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second}`;
+      const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +hh, +p.minute, +p.second);
+      geo.offset = Math.round((asUTC - d.getTime()) / 60000);
+      geo.tzAbbr = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
+        .formatToParts(d).find(x => x.type === 'timeZoneName')?.value || null;
+    } catch { /* 非法时区名则仅保留地点字段 */ }
+  }
+  return geo;
 }
 
 // ── 工具 ──────────────────────────────────────────────────────────

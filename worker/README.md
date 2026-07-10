@@ -44,7 +44,7 @@
 |------|------|------|------|
 | `GET`    | `/api/fan-stats` | 公开 | 返回 `{ fans: [{name, count}], total }` |
 | `POST`   | `/api/fan-stats` | 限流 | body `{ fans: ["立直", ...], tiles: ["1m","2m", ...] }`，记录一副和牌（`tiles` 可选） |
-| `GET`    | `/api/fan-logs?token=&limit=&offset=&ip=` | 管理员 | 审计日志（含 `tiles`、`fans`、`ip`） |
+| `GET`    | `/api/fan-logs?token=&limit=&offset=&ip=` | 管理员 | 审计日志（含 `ts`、`ip`、`tiles`、`fans`、`geo`） |
 | `DELETE` | `/api/fan-logs?token=&ip=` | 管理员 | 删除某 IP 的记录并重算计数 |
 
 校验/限流参数（在 `index.js` 顶部可调）：
@@ -57,6 +57,17 @@
 
 > IP 由 Cloudflare 的 `CF-Connecting-IP` 头在服务端记录，前端不发送 IP。
 > 公开的 `GET /api/fan-stats` 不含 IP；IP 只能通过管理员接口 `/api/fan-logs` 查看。
+
+**上传时间与地点/时区**（均服务端记录，前端不参与）：
+
+- `ts`：上传时刻的 Unix ms（UTC）。
+- `geo`：由 Cloudflare 按访客 IP 判定，形如
+  `{country, region, city, tz, offset, local, tzAbbr}`。
+  - `tz`：IANA 时区名（如 `America/New_York`）。
+  - `local`：访客本地墙钟时间 `YYYY-MM-DD HH:mm:ss`，用 `Intl` 换算，**已含夏令时**。
+  - `offset`：该时刻相对 UTC 的分钟数（夏令时会随之变化，如 EDT 为 -240、EST 为 -300）。
+  - `tzAbbr`：时区缩写/偏移（如 `EDT`/`GMT-4`），可直观看出是否处于夏令时。
+  - 这些只出现在管理员 `/api/fan-logs`，公开统计接口不含。
 
 ---
 
@@ -104,26 +115,35 @@ wrangler deploy
 
 ## 数据库迁移（已部署过、已有数据的库）
 
-新增了 `upload_log.tiles` 列，并把计数语义改为「以副为单位」。对**已存在**的
-库，`CREATE TABLE IF NOT EXISTS` 不会自动加列，需手动迁移一次：
+新增了 `upload_log.tiles`、`upload_log.geo` 两列，并把计数语义改为「以副为
+单位」。对**已存在**的库，`CREATE TABLE IF NOT EXISTS` 不会自动加列，需手动
+迁移一次。
 
-```bash
-# 1. 给旧表补上 tiles 列（历史行的牌型未知，置空数组）
-wrangler d1 execute mahjong-stats --remote \
-  --command "ALTER TABLE upload_log ADD COLUMN tiles TEXT NOT NULL DEFAULT '[]';"
+**在 Cloudflare 后台跑**：Dashboard → Storage & Databases → D1 →
+`mahjong-stats` → **Console** 标签，把下面的 SQL 逐条粘贴运行（不要带
+`wrangler` 外壳）。
 
-# 2. 按「每副去重」重算 fan_counts，让历史数据与新语义一致
-wrangler d1 execute mahjong-stats --remote --command "
+```sql
+-- 1. 补上 tiles 列（历史行牌型未知，置空数组）
+ALTER TABLE upload_log ADD COLUMN tiles TEXT NOT NULL DEFAULT '[]';
+
+-- 2. 补上 geo 列（历史行地点/时区未知，置空对象）
+ALTER TABLE upload_log ADD COLUMN geo TEXT NOT NULL DEFAULT '{}';
+
+-- 3. 按「每副去重」重算 fan_counts，使历史数据符合新语义
 DELETE FROM fan_counts;
 INSERT INTO fan_counts (name, count)
 SELECT value AS name, COUNT(*) AS count FROM (
   SELECT DISTINCT upload_log.id AS hid, j.value AS value
   FROM upload_log, json_each(upload_log.fans) j
-) GROUP BY value;"
+) GROUP BY value;
 ```
 
-> 步骤 2 与 `DELETE /api/fan-logs` 触发的重算逻辑一致，可安全重复执行。
-> 历史行的 `tiles` 为 `[]`（当时未采集），新上报的和牌会带上真实牌型。
+> 若控制台一次只接受一条语句，就把上面 4 条分开跑。
+> 命令行等价写法：`wrangler d1 execute mahjong-stats --remote --command "<上面某条 SQL>"`。
+
+> 步骤 3 与 `DELETE /api/fan-logs` 触发的重算逻辑一致，可安全重复执行。
+> 历史行的 `tiles`/`geo` 为空（当时未采集），新上报的和牌才带真实牌型与地点/时区。
 
 ---
 
