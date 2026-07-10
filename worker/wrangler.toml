@@ -2,23 +2,29 @@ name = "mahjong-stats"
 main = "index.js"
 compatibility_date = "2025-01-01"
 
-# 部署步骤：
-#   1. wrangler d1 create mahjong-stats          → 填入下方 database_id
-#   2. wrangler kv:namespace create mahjong-rl   → 填入下方 kv id
-#   3. wrangler d1 execute mahjong-stats --file=schema.sql
-#   4. wrangler secret put ADMIN_TOKEN           → 设置管理员 token
-#   5. 把下方 pattern/zone_name 换成你的实际域名
-#   6. wrangler deploy
+# ─────────────────────────────────────────────────────────────────────
+# 部署概览（详细步骤见 worker/README.md）
+#   1. wrangler d1 create mahjong-stats        → 把返回的 database_id 填入下方
+#   2. wrangler kv namespace create mahjong-rl → 把返回的 id 填入下方
+#   3. wrangler d1 execute mahjong-stats --remote --file=schema.sql
+#   4. wrangler secret put ADMIN_TOKEN         → 设置管理员 token（审计接口用）
+#   5. wrangler deploy
+#
+# 前置条件：majiang.sicongwang.com 这条 DNS 记录必须在 Cloudflare 里
+# 处于「代理」状态（橙色云朵），否则 /api/* 的 route 不会生效。
+# 站点本体仍由 GitHub Pages 提供，Worker 只接管 /api/* 路径。
+# ─────────────────────────────────────────────────────────────────────
 
 [[d1_databases]]
-binding     = "DB"
+binding       = "DB"
 database_name = "mahjong-stats"
-database_id   = "FILL_IN_AFTER_CREATE"
+database_id   = "FILL_IN_AFTER_CREATE"   # 见步骤 1
 
 [[kv_namespaces]]
 binding = "KV"
-id      = "FILL_IN_AFTER_CREATE"
+id      = "FILL_IN_AFTER_CREATE"         # 见步骤 2
 
+# 让 Worker 只接管站点的 /api/* 路径，其余路径继续走 GitHub Pages
 [[routes]]
-pattern   = "yourdomain.com/api/*"
-zone_name = "yourdomain.com"
+pattern   = "majiang.sicongwang.com/api/*"
+zone_name = "sicongwang.com"
