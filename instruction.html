@@ -184,9 +184,8 @@
     .common-hand-desc { font-size: .77rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 6px; }
     .common-hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
     .common-hand-pct { margin-left: auto; font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
-    /* 占比进度条：填充色沿用该番数的徽章色（.badge-N 提供 background-color） */
-    .common-hand-bar { height: 6px; margin-top: 8px; border-radius: 3px; background: var(--border); overflow: hidden; }
-    .common-hand-bar-fill { height: 100%; width: 0; border-radius: 3px; transition: width .4s ease; }
+    /* 整卡背景作为占比进度条，背景在加载统计后由 JS 设置 */
+    .common-hand-card { transition: background .45s ease; }
 
     /* ── 牌图片尺寸 ── */
     .tile-sm {
@@ -456,18 +455,13 @@
             header.appendChild(name);
             header.appendChild(pct);
 
-            const bar = document.createElement('div');
-            bar.className = 'common-hand-bar';
-            const fill = document.createElement('div');
-            fill.className = `common-hand-bar-fill badge-${f.fan}`;
-            bar.appendChild(fill);
+            card.dataset.fanTier = f.fan;   // 占比进度条用：番数档 → 背景色
 
             const desc = document.createElement('div');
             desc.className = 'common-hand-desc';
             desc.textContent = f.desc;
 
             card.appendChild(header);
-            card.appendChild(bar);
             card.appendChild(desc);
 
             const tileStr = item.tiles || f.example || '';
@@ -630,6 +624,14 @@
 
     linkifyText(main);
 
+    // #rrggbb → rgba(...)，用于给卡片背景加透明度
+    function hexToRgba(hex, alpha) {
+      const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+      if (!m) return '';
+      const n = parseInt(m[1], 16);
+      return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+    }
+
     // ── 拉取统计：补充已上传番种、只显示有上报数据的番种、重排并显示占比 ──
     fetch('/api/fan-stats')
       .then(r => r.ok ? r.json() : null)
@@ -662,13 +664,7 @@
           pct.className = 'common-hand-pct';
           header.appendChild(badge); header.appendChild(nameEl); header.appendChild(pct);
           card.appendChild(header);
-          const bar = document.createElement('div');
-          bar.className = 'common-hand-bar';
-          const fill = document.createElement('div');
-          fill.className = 'common-hand-bar-fill' + (f ? ` badge-${f.fan}` : '');
-          if (!f) fill.style.backgroundColor = 'var(--text-muted)';
-          bar.appendChild(fill);
-          card.appendChild(bar);
+          if (f) card.dataset.fanTier = f.fan;   // 占比进度条用：番数档 → 背景色
           const desc = document.createElement('div');
           desc.className = 'common-hand-desc';
           desc.textContent = f?.desc ?? '';
@@ -700,14 +696,20 @@
           .sort((a, b) => (freq[b.dataset.fanName] || 0) - (freq[a.dataset.fanName] || 0))
           .forEach(c => grid.appendChild(c));
 
-        // 填入百分比与进度条宽度（占比 = 含该番的副数 / 总副数）
+        // 填入百分比，并把整卡背景做成「占比进度条」：
+        // 番数对应色 + 透明度，从左填充到占比宽度，其余保持卡片底色
+        const rootStyle = getComputedStyle(document.documentElement);
         grid.querySelectorAll('.common-hand-card').forEach(card => {
           const count = freq[card.dataset.fanName] || 0;
           const pct = total > 0 ? count / total * 100 : 0;
           const pctEl = card.querySelector('.common-hand-pct');
           if (pctEl) pctEl.textContent = pct ? pct.toFixed(1) + '%' : '';
-          const fill = card.querySelector('.common-hand-bar-fill');
-          if (fill) fill.style.width = pct.toFixed(1) + '%';
+          const tier = card.dataset.fanTier;
+          const rgba = hexToRgba(tier != null ? rootStyle.getPropertyValue('--c' + tier).trim() : '', 0.22)
+                       || 'rgba(120,120,120,0.15)';
+          const w = pct.toFixed(2);
+          card.style.background =
+            `linear-gradient(to right, ${rgba} 0 ${w}%, transparent ${w}% 100%), var(--surface)`;
         });
 
         // 全部无上报数据时给个提示
