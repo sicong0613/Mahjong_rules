@@ -247,7 +247,7 @@
     updatePickerCounts();
     updateKongWinCheckbox();
     updateDoraDropdown();
-    dom.calcBtn.disabled = !S.liujuManguan && (!S.winTile || S.standing.length === 0 || !!S.replacing);
+    updateActionButtons();
   }
 
   function countRedFives() {
@@ -873,6 +873,31 @@
   // ─── 计算 ──────────────────────────────────────────────────────
   let _lastResult = null;
   let _lastTiles  = [];   // 上次计算的整副牌牌码，用于上报
+  let _calcSig    = null; // 上次计算时的手牌+选项签名；与当前不同即视为已改动
+  let _uploaded   = false;// 当前计算结果是否已上传（上传后禁用上传按钮，直到重新计算）
+
+  // 影响计算结果的全部输入的签名：手牌任一变化或选项变化都会改变它
+  function handSignature() {
+    return JSON.stringify({
+      st: S.standing.map(t => t && [t.code, t.isRed]),
+      w:  S.winTile && [S.winTile.code, S.winTile.isRed],
+      m:  S.melds.map(m => [m.type, m.tile, !!m.concealed, m.tiles.map(t => [t.code, t.isRed])]),
+      f: S.flowers, sd: S.selfDrawn, lt: S.lastTile, kw: S.kongWin,
+      wl: S.wallLast, rl: S.riverLast, gkc: S.gangKaiChong, qg: S.qiangGang,
+      ri: S.riichi, rt: S.riichiType, dora: S.dora, ip: S.ippatsu,
+      pw: S.prevalentWind, sw: S.seatWind, dw: S.dealerWin,
+      th: S.fan_tian_he, dh: S.fan_di_he, rh: S.fan_ren_he, lj: S.liujuManguan,
+    });
+  }
+
+  // 统一维护「计算」「上传」按钮的可用状态
+  function updateActionButtons() {
+    const validHand = S.liujuManguan || (S.winTile && S.standing.length > 0 && !S.replacing);
+    // 已计算且手牌/选项未改动
+    const calced = _calcSig !== null && _lastResult !== null && _calcSig === handSignature();
+    dom.calcBtn.disabled = !validHand || calced;              // 计算完成后禁用，改动后恢复
+    if (dom.uploadBtn) dom.uploadBtn.disabled = !calced || _uploaded; // 上传后禁用，重新计算后恢复
+  }
 
   // 收集当前整副牌的牌码（立牌 + 副露/杠 + 和牌张，和牌张放最后）
   // code 为数字位域，用 tileToSvg 转成字符串码：1m/0p/5s/E/Z…（红五为 0m/0p/0s）
@@ -891,7 +916,9 @@
       renderResult(r);
       _lastResult = r;
       _lastTiles  = [];   // 流局满贯无牌型
-      if (dom.uploadBtn) dom.uploadBtn.disabled = false;
+      _calcSig    = handSignature();
+      _uploaded   = false;
+      updateActionButtons();
       return;
     }
     const packs = S.melds.map(m => {
@@ -965,7 +992,9 @@
     renderResult(result);
     _lastResult = result.error ? null : result;
     _lastTiles  = result.error ? [] : currentHandTiles();
-    if (dom.uploadBtn) dom.uploadBtn.disabled = !_lastResult;
+    _calcSig    = result.error ? null : handSignature();
+    _uploaded   = false;
+    updateActionButtons();
     return result;
   }
 
@@ -1208,22 +1237,28 @@
       document.getElementById('hc-flowers').value   = 0;
       document.getElementById('hc-prevalent').value = 0;
       document.getElementById('hc-seat').value      = 0;
+      _lastResult = null;
+      _lastTiles  = [];
+      _calcSig    = null;
+      _uploaded   = false;
       render();
       dom.result.innerHTML = '';
       dom.result.classList.add('hidden');
-      _lastResult = null;
-      _lastTiles  = [];
-      if (dom.uploadBtn) dom.uploadBtn.disabled = true;
     });
     document.getElementById('hc-buffer-clear').addEventListener('click', () => { S.buffer = []; render(); });
     dom.calcBtn.addEventListener('click', () => Calculator.ready.then(doCalculate));
     dom.uploadBtn?.addEventListener('click', async () => {
-      if (!_lastResult) return;
+      if (!_lastResult || _uploaded) return;
       const res = await confirmUpload();
       if (!res) return;
       reportFanStats(_lastResult.fans, _lastTiles, res.player);
+      _uploaded = true;                 // 上传后禁用上传按钮，直到重新计算
+      updateActionButtons();
       showToast('已上传');
     });
+    // 兜底：任何选项（复选框/下拉/数字框）变化后刷新按钮状态
+    document.getElementById('hand-calc-page').addEventListener('change', updateActionButtons);
+    document.getElementById('hand-calc-page').addEventListener('input',  updateActionButtons);
     document.getElementById('hc-dealer-win').addEventListener('change', e => {
       S.dealerWin = e.target.checked;
     });
