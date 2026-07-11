@@ -94,21 +94,8 @@ async function postStats(request, env) {
   )].slice(0, MAX_FANS_PER_UPLOAD);
   if (fans.length === 0) return json({ error: 'no valid fan names' }, 400);
 
-  // 牌型（可选）：结构化 {concealed:[], win:code|null, melds:[[...]]}
-  // 兼容旧格式（平铺数组）：直接原样清洗后存储
-  const isCode = t => typeof t === 'string' && t.length > 0 && t.length <= MAX_TILE_CODE_LEN;
-  const codeList = (arr, max) => Array.isArray(arr) ? arr.filter(isCode).slice(0, max) : [];
-  const bt = body?.tiles;
-  let tiles;
-  if (bt && typeof bt === 'object' && !Array.isArray(bt)) {
-    tiles = {
-      concealed: codeList(bt.concealed, MAX_TILES_PER_HAND),
-      win: isCode(bt.win) ? bt.win : null,
-      melds: (Array.isArray(bt.melds) ? bt.melds : []).slice(0, 6).map(m => codeList(m, 4)),
-    };
-  } else {
-    tiles = codeList(bt, MAX_TILES_PER_HAND);   // 旧格式：平铺数组
-  }
+  // 牌型（可选）：结构化 {concealed,win,melds}，兼容旧平铺数组
+  const tiles = sanitizeTiles(body?.tiles);
 
   // 和牌人（可选，仅用于追踪；非登录/鉴权）
   const player = (typeof body?.player === 'string' ? body.player.trim() : '').slice(0, MAX_PLAYER_LEN);
@@ -205,9 +192,10 @@ async function getLogs(request, env) {
 }
 
 // ── PUT /api/fan-logs/import ───────────────────────────────────────
-// 批量导入逐副记录（只记番型汇总，忽略牌型）。body 为「副」数组：
-//   [["平和","断幺"], ["清一色"], ...]   或   [{fans:[...], player?}, ...]
-// 每副插入一行 upload_log（ip=import，tiles/geo 置空），随后重算 fan_counts。
+// 批量导入逐副记录（完整记录）。body 为「副」数组，每副可为：
+//   ["平和","断幺"]                                  ← 仅番型汇总（简写）
+//   {fans:[...], ts?, player?, ip?, tiles?, geo?}    ← 完整记录，任一字段可省略/null
+// 省略/null 的字段在 admin 里不显示。每副插入一行 upload_log，随后重算 fan_counts。
 // 追加式：不清空已有记录；total 随之增长，占比更稳定。
 async function importLogs(request, env) {
   if (!checkAdmin(request, env)) return adminError(env);
@@ -218,19 +206,25 @@ async function importLogs(request, env) {
   if (!Array.isArray(rows) || rows.length === 0)
     return json({ error: 'expected non-empty array of hands' }, 400);
 
-  const ts = Date.now();
   const inserts = [];
   for (const row of rows) {
-    const rawFans = Array.isArray(row) ? row : row?.fans;
+    const isObj = row && typeof row === 'object' && !Array.isArray(row);
+    const rawFans = Array.isArray(row) ? row : (isObj ? row.fans : null);
     if (!Array.isArray(rawFans)) continue;
     const fans = [...new Set(
       rawFans.filter(n => typeof n === 'string' && n.length > 0 && n.length <= MAX_FAN_NAME_LEN)
     )].slice(0, MAX_FANS_PER_UPLOAD);
     if (fans.length === 0) continue;
-    const player = (typeof row?.player === 'string' ? row.player.trim() : '').slice(0, MAX_PLAYER_LEN);
+
+    const ts     = isObj && Number.isFinite(row.ts) && row.ts > 0 ? row.ts : 0; // 0 = 时间留空
+    const player = isObj && typeof row.player === 'string' ? row.player.trim().slice(0, MAX_PLAYER_LEN) : '';
+    const ip     = isObj && typeof row.ip === 'string' && row.ip.trim() ? row.ip.trim().slice(0, 45) : 'import';
+    const tiles  = isObj && row.tiles != null ? sanitizeTiles(row.tiles) : {};
+    const geo    = isObj ? sanitizeGeo(row.geo, ts) : {};
+
     inserts.push(env.DB
-      .prepare("INSERT INTO upload_log (ts, ip, tiles, fans, geo, player) VALUES (?, 'import', '{}', ?, '{}', ?)")
-      .bind(ts, JSON.stringify(fans), player));
+      .prepare('INSERT INTO upload_log (ts, ip, tiles, fans, geo, player) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(ts, ip, JSON.stringify(tiles), JSON.stringify(fans), JSON.stringify(geo), player));
   }
   if (inserts.length === 0) return json({ error: 'no valid hands' }, 400);
 
@@ -292,37 +286,63 @@ async function deleteLogs(request, env) {
 }
 
 // ── 地点 / 时区 ────────────────────────────────────────────────────
-// 从 Cloudflare 的 request.cf（按访客 IP 判定）取地点与 IANA 时区，
-// 再用 Intl 把 UTC 时刻换算成访客本地时间——Intl 会自动应用夏令时。
+// 用 Intl 把 UTC 时刻按 IANA 时区换算成本地时间——自动应用夏令时。
+// 返回 {local, offset, tzAbbr}；时区非法或无效则返回 {}。
+function computeLocal(tz, ts) {
+  try {
+    const d = new Date(ts);
+    const p = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(d).reduce((a, x) => (a[x.type] = x.value, a), {});
+    const hh = p.hour === '24' ? '00' : p.hour;     // en-CA 可能返回 24 时
+    const local = `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second}`;
+    const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +hh, +p.minute, +p.second);
+    const offset = Math.round((asUTC - d.getTime()) / 60000);
+    const tzAbbr = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
+      .formatToParts(d).find(x => x.type === 'timeZoneName')?.value || null;
+    return { local, offset, tzAbbr };
+  } catch { return {}; }
+}
+
+// 从 Cloudflare 的 request.cf（按访客 IP 判定）取地点与 IANA 时区
 function buildGeo(cf, ts) {
   cf = cf || {};
   const tz = cf.timezone || null;                 // IANA，如 America/New_York
   const geo = {
-    country: cf.country || null,                  // 如 US / CN
-    region:  cf.region  || null,                  // 省 / 州
-    city:    cf.city    || null,
-    tz,                                           // IANA 时区名
-    offset:  null,                                // 该时刻相对 UTC 的分钟数（含夏令时）
-    local:   null,                                // 本地墙钟时间 YYYY-MM-DD HH:mm:ss
-    tzAbbr:  null,                                // 时区缩写/偏移，如 EDT / GMT-4（体现夏令时）
+    country: cf.country || null, region: cf.region || null, city: cf.city || null,
+    tz, offset: null, local: null, tzAbbr: null,
   };
-  if (tz) {
-    try {
-      const d = new Date(ts);
-      const p = new Intl.DateTimeFormat('en-CA', {
-        timeZone: tz, hour12: false,
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-      }).formatToParts(d).reduce((a, x) => (a[x.type] = x.value, a), {});
-      const hh = p.hour === '24' ? '00' : p.hour;   // en-CA 可能返回 24 时
-      geo.local  = `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second}`;
-      const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +hh, +p.minute, +p.second);
-      geo.offset = Math.round((asUTC - d.getTime()) / 60000);
-      geo.tzAbbr = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
-        .formatToParts(d).find(x => x.type === 'timeZoneName')?.value || null;
-    } catch { /* 非法时区名则仅保留地点字段 */ }
-  }
+  if (tz) Object.assign(geo, computeLocal(tz, ts));
   return geo;
+}
+
+// 校验导入的 geo：只保留合法字段；给了 tz 和有效 ts 但没给 local 时自动按夏令时算
+function sanitizeGeo(g, ts) {
+  if (!g || typeof g !== 'object' || Array.isArray(g)) return {};
+  const str = (v, max) => (typeof v === 'string' && v.length) ? v.slice(0, max) : null;
+  const geo = {
+    country: str(g.country, 8), region: str(g.region, 40), city: str(g.city, 40),
+    tz: str(g.tz, 40), local: str(g.local, 25), tzAbbr: str(g.tzAbbr, 12),
+    offset: Number.isFinite(g.offset) ? g.offset : null,
+  };
+  if (geo.tz && !geo.local && ts > 0) Object.assign(geo, computeLocal(geo.tz, ts));
+  return geo;
+}
+
+// 校验牌型：结构化 {concealed,win,melds} 或旧的平铺数组
+function sanitizeTiles(bt) {
+  const isCode = t => typeof t === 'string' && t.length > 0 && t.length <= MAX_TILE_CODE_LEN;
+  const codeList = (arr, max) => Array.isArray(arr) ? arr.filter(isCode).slice(0, max) : [];
+  if (bt && typeof bt === 'object' && !Array.isArray(bt)) {
+    return {
+      concealed: codeList(bt.concealed, MAX_TILES_PER_HAND),
+      win: isCode(bt.win) ? bt.win : null,
+      melds: (Array.isArray(bt.melds) ? bt.melds : []).slice(0, 6).map(m => codeList(m, 4)),
+    };
+  }
+  return codeList(bt, MAX_TILES_PER_HAND);
 }
 
 // ── 工具 ──────────────────────────────────────────────────────────

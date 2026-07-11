@@ -45,7 +45,7 @@
 | `GET`    | `/api/fan-stats` | 公开 | 返回 `{ fans: [{name, count}], total }` |
 | `POST`   | `/api/fan-stats` | 限流 | body `{ fans: ["立直", ...], tiles: ["1m","2m", ...], player: "张三" }`，记录一副和牌（`tiles`/`player` 可选） |
 | `GET`    | `/api/fan-logs?token=&limit=&offset=&ip=` | 管理员 | 审计日志（含 `ts`、`ip`、`tiles`、`fans`、`geo`） |
-| `PUT`    | `/api/fan-logs/import?token=` | 管理员 | 批量导入逐副记录（追加），body 为「副」数组 `[["平和","断幺"],...]`，随后重算计数 |
+| `PUT`    | `/api/fan-logs/import?token=` | 管理员 | 批量导入逐副记录（追加，完整记录）。body 为「副」数组，每副 `["平和","断幺"]` 或 `{fans,ts,player,ip,tiles,geo}`（字段可省略/null），随后重算计数 |
 | `DELETE` | `/api/fan-logs?token=&id=` | 管理员 | 删除单条记录并重算计数 |
 | `DELETE` | `/api/fan-logs?token=&ip=` | 管理员 | 删除某 IP 的全部记录并重算计数 |
 

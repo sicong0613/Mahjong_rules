@@ -57,8 +57,8 @@
     <span id="logged" hidden>🔓 已登录</span>
     <input id="limit" type="number" value="200" min="1" max="1000" title="加载条数">
     <button id="load">加载</button>
-    <button id="export" class="ghost" title="导出全部逐副记录（番型汇总 JSON）">导出</button>
-    <button id="import" class="ghost" title="导入逐副记录（番型汇总 JSON，追加）">导入</button>
+    <button id="export" class="ghost" title="导出全部逐副记录（完整记录 JSON）">导出</button>
+    <button id="import" class="ghost" title="导入逐副记录（完整记录 JSON，追加）">导入</button>
     <input id="importFile" type="file" accept="application/json,.json" hidden>
     <button id="forget" class="ghost" title="清除本机保存的 token 并重新输入">忘记 token</button>
   </div>
@@ -114,12 +114,13 @@
     function timeCell(ts, geo) {
       const td = document.createElement('td');
       td.className = 'time';
+      const utc = ts ? `<span class="utc">上传(UTC): ${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}</span>` : '';
       if (geo && geo.local) {
-        td.innerHTML = `${geo.local} <span class="abbr">${geo.tzAbbr || ''}</span>` +
-          `<span class="utc">上传(UTC): ${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}</span>`;
+        td.innerHTML = `${geo.local} <span class="abbr">${geo.tzAbbr || ''}</span>${utc}`;
+      } else if (ts) {
+        td.innerHTML = `<span class="abbr">无时区</span>${utc}`;
       } else {
-        td.innerHTML = `<span class="abbr">无时区</span>` +
-          `<span class="utc">上传(UTC): ${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}</span>`;
+        td.textContent = '—';   // 时间留空
       }
       return td;
     }
@@ -292,9 +293,17 @@
           all.push(...batch);
           if (batch.length < 1000) break;
         }
-        const hands = all.map(r => fmtParse(r.fans, [])).filter(a => Array.isArray(a) && a.length);
-        downloadJSON(`mahjong-records-${Date.now()}.json`, hands);
-        showMsg(`已导出 ${hands.length} 副`);
+        // 完整记录：时间/和牌人/地点/番种/牌型/IP，可直接编辑后再导入
+        const records = all.map(r => ({
+          ts: r.ts || null,
+          player: r.player || null,
+          ip: r.ip || null,
+          fans: fmtParse(r.fans, []),
+          tiles: fmtParse(r.tiles, null),
+          geo: fmtParse(r.geo, null),
+        })).filter(r => Array.isArray(r.fans) && r.fans.length);
+        downloadJSON(`mahjong-records-${Date.now()}.json`, records);
+        showMsg(`已导出 ${records.length} 副`);
       } catch (e) { showMsg('导出出错：' + e.message, true); }
     }
 
@@ -309,7 +318,7 @@
       try { hands = JSON.parse(await file.text()); }
       catch { showMsg('文件不是合法 JSON', true); return; }
       if (!Array.isArray(hands) || hands.length === 0) {
-        showMsg('JSON 应为「副」数组，如 [["平和","断幺"],["清一色"]]', true); return;
+        showMsg('JSON 应为「副」数组：每副可写 ["平和","断幺"]，或 {fans:[...],ts,player,ip,tiles,geo}', true); return;
       }
       if (!confirm(`确认导入 ${hands.length} 副记录？将追加到现有数据并重算计数。`)) return;
       showMsg('导入中…');
