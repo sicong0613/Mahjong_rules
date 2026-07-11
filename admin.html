@@ -22,6 +22,7 @@
       color: #fff; border-radius: 6px; cursor: pointer; font-size: .85rem;
     }
     .bar button.ghost { background: transparent; color: var(--accent); }
+    #logged { font-size: .85rem; color: #2e7d32; white-space: nowrap; }
     .summary { font-size: .85rem; margin-bottom: 10px; color: var(--text-muted); }
     .msg { font-size: .85rem; margin: 10px 0; }
     .msg.err { color: #c0392b; }
@@ -53,9 +54,13 @@
 
   <div class="bar">
     <input id="token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off">
+    <span id="logged" hidden>🔓 已登录</span>
     <input id="limit" type="number" value="200" min="1" max="1000" title="加载条数">
     <button id="load">加载</button>
-    <button id="forget" class="ghost" title="清除本机保存的 token">忘记 token</button>
+    <button id="export" class="ghost" title="导出全部逐副记录（番型汇总 JSON）">导出</button>
+    <button id="import" class="ghost" title="导入逐副记录（番型汇总 JSON，追加）">导入</button>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+    <button id="forget" class="ghost" title="清除本机保存的 token 并重新输入">忘记 token</button>
   </div>
 
   <div id="summary" class="summary"></div>
@@ -94,7 +99,15 @@
 
     // 记住 token（本机 cookie，登录一次后免重输，有效期约一年）
     tokenEl.value = getCookie(TOKEN_COOKIE) || '';
-    $('forget').onclick = () => { delCookie(TOKEN_COOKIE); tokenEl.value = ''; showMsg('已忘记本机 token'); };
+
+    // 输入 token 加载成功后隐藏输入框，显示「已登录」；忘记则重新显示
+    function setLoggedIn(v) { tokenEl.hidden = v; $('logged').hidden = !v; }
+    function authToken() { return tokenEl.value.trim() || getCookie(TOKEN_COOKIE) || ''; }
+    $('forget').onclick = () => {
+      delCookie(TOKEN_COOKIE); tokenEl.value = ''; setLoggedIn(false);
+      $('rows').innerHTML = ''; $('tbl').hidden = true; $('summary').textContent = '';
+      showMsg('已忘记本机 token');
+    };
 
     function fmtParse(s, fallback) { try { return JSON.parse(s); } catch { return fallback; } }
 
@@ -204,6 +217,7 @@
         const logs = await logsRes.json();
         const stats = statsRes.ok ? await statsRes.json() : null;
         render(logs, stats);
+        setLoggedIn(true);   // 加载成功 → 隐藏 token 输入框
         showMsg('');
       } catch (e) { showMsg('网络错误：' + e.message, true); }
     }
@@ -228,7 +242,7 @@
     }
 
     async function deleteRecord(id) {
-      const token = tokenEl.value.trim();
+      const token = authToken();
       if (id == null || !token) return;
       if (!confirm(`确定删除这一条记录（#${id}）并重算番种计数？此操作不可撤销。`)) return;
       try {
@@ -241,7 +255,7 @@
     }
 
     async function deleteIp(ip) {
-      const token = tokenEl.value.trim();
+      const token = authToken();
       if (!ip || !token) return;
       if (!confirm(`确定删除 IP ${ip} 的全部上传记录，并重算番种计数？此操作不可撤销。`)) return;
       try {
@@ -257,7 +271,63 @@
       const m = $('msg'); m.textContent = text; m.className = 'msg' + (isErr ? ' err' : '');
     }
 
+    function downloadJSON(filename, data) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // 导出：拉全部记录，输出「副」数组（番型汇总，即导入所需格式）
+    async function exportRecords() {
+      const token = authToken();
+      if (!token) { showMsg('请先输入并加载 token', true); return; }
+      showMsg('导出中…');
+      try {
+        const all = [];
+        for (let offset = 0; ; offset += 1000) {
+          const res = await fetch(`/api/fan-logs?token=${encodeURIComponent(token)}&limit=1000&offset=${offset}`);
+          if (!res.ok) { showMsg(`导出失败：HTTP ${res.status}`, true); return; }
+          const batch = await res.json();
+          all.push(...batch);
+          if (batch.length < 1000) break;
+        }
+        const hands = all.map(r => fmtParse(r.fans, [])).filter(a => Array.isArray(a) && a.length);
+        downloadJSON(`mahjong-records-${Date.now()}.json`, hands);
+        showMsg(`已导出 ${hands.length} 副`);
+      } catch (e) { showMsg('导出出错：' + e.message, true); }
+    }
+
+    // 导入：读取「副」数组 JSON，追加写入逐副记录
+    async function importRecords(e) {
+      const file = e.target.files[0];
+      e.target.value = '';           // 允许重复选同一文件
+      if (!file) return;
+      const token = authToken();
+      if (!token) { showMsg('请先输入并加载 token', true); return; }
+      let hands;
+      try { hands = JSON.parse(await file.text()); }
+      catch { showMsg('文件不是合法 JSON', true); return; }
+      if (!Array.isArray(hands) || hands.length === 0) {
+        showMsg('JSON 应为「副」数组，如 [["平和","断幺"],["清一色"]]', true); return;
+      }
+      if (!confirm(`确认导入 ${hands.length} 副记录？将追加到现有数据并重算计数。`)) return;
+      showMsg('导入中…');
+      try {
+        const res = await fetch(`/api/fan-logs/import?token=${encodeURIComponent(token)}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hands),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { showMsg(`导入失败：${data.error || ('HTTP ' + res.status)}`, true); return; }
+        showMsg(`已导入 ${data.imported} 副`);
+        load();
+      } catch (e2) { showMsg('导入出错：' + e2.message, true); }
+    }
+
     $('load').onclick = load;
+    $('export').onclick = exportRecords;
+    $('import').onclick = () => $('importFile').click();
+    $('importFile').addEventListener('change', importRecords);
     tokenEl.addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
     if (tokenEl.value) load();
   </script>

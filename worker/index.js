@@ -7,6 +7,7 @@
 //   GET  /api/fan-stats/export?token=&format=    → 导出 fan_counts（json/csv，管理员）
 //   PUT  /api/fan-stats/import?token=            → 覆盖导入 fan_counts（管理员）
 //   GET  /api/fan-logs?token=&limit=&offset=&ip= → 审计日志（管理员）
+//   PUT  /api/fan-logs/import?token=             → 批量导入逐副记录（管理员）
 //   DELETE /api/fan-logs?token=&id=              → 删除单条记录并重算计数
 //   DELETE /api/fan-logs?token=&ip=              → 清除某 IP 的记录并重算计数
 //
@@ -43,6 +44,9 @@ export default {
       if (path.endsWith('/api/fan-stats')) {
         if (request.method === 'GET')  return await getStats(env);
         if (request.method === 'POST') return await postStats(request, env);
+      }
+      if (path.endsWith('/api/fan-logs/import')) {
+        if (request.method === 'PUT') return await importLogs(request, env);
       }
       if (path.endsWith('/api/fan-logs')) {
         if (request.method === 'GET')    return await getLogs(request, env);
@@ -198,6 +202,57 @@ async function getLogs(request, env) {
         .bind(limit, offset).all();
 
   return json(results);
+}
+
+// ── PUT /api/fan-logs/import ───────────────────────────────────────
+// 批量导入逐副记录（只记番型汇总，忽略牌型）。body 为「副」数组：
+//   [["平和","断幺"], ["清一色"], ...]   或   [{fans:[...], player?}, ...]
+// 每副插入一行 upload_log（ip=import，tiles/geo 置空），随后重算 fan_counts。
+// 追加式：不清空已有记录；total 随之增长，占比更稳定。
+async function importLogs(request, env) {
+  if (!checkAdmin(request, env)) return adminError(env);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'invalid json' }, 400); }
+  const rows = Array.isArray(body) ? body : body?.hands;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return json({ error: 'expected non-empty array of hands' }, 400);
+
+  const ts = Date.now();
+  const inserts = [];
+  for (const row of rows) {
+    const rawFans = Array.isArray(row) ? row : row?.fans;
+    if (!Array.isArray(rawFans)) continue;
+    const fans = [...new Set(
+      rawFans.filter(n => typeof n === 'string' && n.length > 0 && n.length <= MAX_FAN_NAME_LEN)
+    )].slice(0, MAX_FANS_PER_UPLOAD);
+    if (fans.length === 0) continue;
+    const player = (typeof row?.player === 'string' ? row.player.trim() : '').slice(0, MAX_PLAYER_LEN);
+    inserts.push(env.DB
+      .prepare("INSERT INTO upload_log (ts, ip, tiles, fans, geo, player) VALUES (?, 'import', '{}', ?, '{}', ?)")
+      .bind(ts, JSON.stringify(fans), player));
+  }
+  if (inserts.length === 0) return json({ error: 'no valid hands' }, 400);
+
+  // 分块批量插入（保守分块，避免超过 D1 batch 限制）
+  const CHUNK = 50;
+  for (let i = 0; i < inserts.length; i += CHUNK) {
+    await env.DB.batch(inserts.slice(i, i + CHUNK));
+  }
+
+  // 从 upload_log 重算 fan_counts（每副去重）
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM fan_counts'),
+    env.DB.prepare(`
+      INSERT INTO fan_counts (name, count)
+      SELECT value AS name, COUNT(*) AS count FROM (
+        SELECT DISTINCT upload_log.id AS hid, j.value AS value
+        FROM upload_log, json_each(upload_log.fans) j
+      ) GROUP BY value
+    `),
+  ]);
+
+  return json({ ok: true, imported: inserts.length });
 }
 
 // ── DELETE /api/fan-logs ───────────────────────────────────────────
