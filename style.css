@@ -957,6 +957,14 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
   box-shadow: 0 8px 30px rgba(0,0,0,.3);
 }
 .hc-modal-msg { font-size: .9rem; line-height: 1.6; margin: 0 0 12px; }
+.hc-modal-field {
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: .78rem; color: var(--text-muted); margin-bottom: 12px;
+}
+.hc-modal-input {
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: inherit; font-size: .9rem;
+}
 .hc-modal-check {
   display: flex; align-items: center; gap: 6px;
   font-size: .82rem; color: var(--text-muted); cursor: pointer; margin-bottom: 14px;

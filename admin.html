@@ -33,6 +33,7 @@
     td.time .abbr { color: var(--text-muted); }
     td.time .utc { display: block; color: var(--text-muted); font-size: .72rem; }
     td.geo { white-space: nowrap; font-size: .78rem; }
+    td.player { white-space: nowrap; font-weight: 600; }
     .fans span { display: inline-block; background: var(--surface); border: 1px solid var(--border);
       border-radius: 4px; padding: 1px 6px; margin: 1px 2px; white-space: nowrap; }
     .tiles { display: flex; flex-wrap: wrap; gap: 1px; align-items: center; min-width: 200px; }
@@ -63,7 +64,7 @@
     <table id="tbl" hidden>
       <thead>
         <tr>
-          <th>本地时间（含夏令时）</th><th>地点</th><th>番种</th><th>牌型</th><th>IP</th>
+          <th>本地时间（含夏令时）</th><th>和牌人</th><th>地点</th><th>番种</th><th>牌型</th><th>IP</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -106,6 +107,13 @@
         td.innerHTML = `<span class="abbr">无时区</span>` +
           `<span class="utc">上传(UTC): ${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}</span>`;
       }
+      return td;
+    }
+
+    function playerCell(player) {
+      const td = document.createElement('td');
+      td.className = 'player';
+      td.textContent = player || '—';
       return td;
     }
 
@@ -191,6 +199,7 @@
         const tr = document.createElement('tr');
         const geo = fmtParse(r.geo, {});
         tr.appendChild(timeCell(r.ts, geo));
+        tr.appendChild(playerCell(r.player));
         tr.appendChild(geoCell(geo));
         tr.appendChild(fansCell(fmtParse(r.fans, [])));
         tr.appendChild(tilesCell(fmtParse(r.tiles, [])));

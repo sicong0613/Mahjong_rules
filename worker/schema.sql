@@ -13,13 +13,15 @@ CREATE TABLE IF NOT EXISTS fan_counts (
 --   geo   JSON，按 IP 判定的地点与本地时间：
 --         {country,region,city,tz,offset,local,tzAbbr}
 --         tz 为 IANA 时区名，local/offset/tzAbbr 已按夏令时换算
+--   player 和牌人名（选填，仅用于追踪；非登录/鉴权）
 CREATE TABLE IF NOT EXISTS upload_log (
-  id    INTEGER PRIMARY KEY AUTOINCREMENT,
-  ts    INTEGER NOT NULL,
-  ip    TEXT    NOT NULL,
-  tiles TEXT    NOT NULL DEFAULT '[]',
-  fans  TEXT    NOT NULL,
-  geo   TEXT    NOT NULL DEFAULT '{}'
+  id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts     INTEGER NOT NULL,
+  ip     TEXT    NOT NULL,
+  tiles  TEXT    NOT NULL DEFAULT '[]',
+  fans   TEXT    NOT NULL,
+  geo    TEXT    NOT NULL DEFAULT '{}',
+  player TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_log_ts ON upload_log(ts);

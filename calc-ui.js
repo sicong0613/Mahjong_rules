@@ -80,18 +80,6 @@
   // ─── 工具 ─────────────────────────────────────────────────────
   function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
 
-  // ─── Cookie ───────────────────────────────────────────────────
-  function setCookie(name, value, days) {
-    const exp = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${exp}; path=/; SameSite=Lax`;
-  }
-  function getCookie(name) {
-    return document.cookie.split('; ').reduce((r, c) => {
-      const i = c.indexOf('='); const k = c.slice(0, i);
-      return k === name ? decodeURIComponent(c.slice(i + 1)) : r;
-    }, '');
-  }
-
   // 构建一个牌元素（img 版本）
   function makeTileEl(code, isRed, size) {
     const d = el('div', `hc-tile hc-tile-${size}`);
@@ -981,13 +969,13 @@
     return result;
   }
 
-  function reportFanStats(fans, tiles) {
+  function reportFanStats(fans, tiles, player) {
     const names = fans.map(f => f.name).filter(Boolean);
     if (names.length === 0) return;
     fetch('/api/fan-stats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fans: names, tiles: tiles || [] }),
+      body: JSON.stringify({ fans: names, tiles: tiles || [], player: player || '' }),
     }).catch(() => {});
   }
 
@@ -1033,34 +1021,51 @@
 
   // ─── Toast ─────────────────────────────────────────────────────
   let _toastTimer;
-  // 上传确认弹窗（带「不再提示」勾选框，由 cookie 记忆）。返回 Promise<boolean>
-  const UPLOAD_NOCONFIRM_COOKIE = 'hc_upload_noconfirm';
+  // 上传确认弹窗（带「和牌人」输入与「不再提示」勾选框）
+  // 「不再提示」与「和牌人」都是会话内状态，刷新页面即重置，方便换人/改错
+  // 返回 Promise<{player} | null>；null = 取消
+  let _uploadNoConfirm = false;
+  let _lastPlayer = '';
   function confirmUpload() {
-    if (getCookie(UPLOAD_NOCONFIRM_COOKIE) === '1') return Promise.resolve(true);
+    // 本次会话已选「不再提示」：跳过弹窗，沿用本次会话记住的和牌人
+    if (_uploadNoConfirm) return Promise.resolve({ player: _lastPlayer });
     return new Promise(resolve => {
       const overlay = el('div', 'hc-modal-overlay');
       const box = el('div', 'hc-modal');
       const msg = el('p', 'hc-modal-msg');
       msg.textContent = '上传此次和牌的番种数据到数据库？若不理解此选项请不要上传。';
+
+      const field = el('label', 'hc-modal-field');
+      field.append('和牌人（选填，仅用于追踪谁和了牌，不是登录）');
+      const input = document.createElement('input');
+      input.type = 'text'; input.className = 'hc-modal-input';
+      input.placeholder = '可留空';
+      input.maxLength = 24;
+      input.value = _lastPlayer;
+      field.appendChild(input);
+
       const label = el('label', 'hc-modal-check');
       const cb = document.createElement('input'); cb.type = 'checkbox';
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(' 不再提示'));
+      label.append(cb, ' 不再提示');
+
       const btns = el('div', 'hc-modal-btns');
       const cancel = el('button', 'hc-modal-btn'); cancel.textContent = '取消';
       const ok = el('button', 'hc-modal-btn hc-modal-ok'); ok.textContent = '上传';
       btns.append(cancel, ok);
-      box.append(msg, label, btns);
+      box.append(msg, field, label, btns);
       overlay.appendChild(box);
       document.getElementById('hand-calc-page').appendChild(overlay);
+      input.focus();
 
       const close = result => { overlay.remove(); resolve(result); };
-      cancel.onclick = () => close(false);
+      cancel.onclick = () => close(null);
       ok.onclick = () => {
-        if (cb.checked) setCookie(UPLOAD_NOCONFIRM_COOKIE, '1', 365);
-        close(true);
+        const player = input.value.trim();
+        _lastPlayer = player;                 // 会话内记住和牌人，下次弹窗预填（刷新即清空）
+        if (cb.checked) _uploadNoConfirm = true;
+        close({ player });
       };
-      overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
     });
   }
 
@@ -1214,8 +1219,9 @@
     dom.calcBtn.addEventListener('click', () => Calculator.ready.then(doCalculate));
     dom.uploadBtn?.addEventListener('click', async () => {
       if (!_lastResult) return;
-      if (!(await confirmUpload())) return;
-      reportFanStats(_lastResult.fans, _lastTiles);
+      const res = await confirmUpload();
+      if (!res) return;
+      reportFanStats(_lastResult.fans, _lastTiles, res.player);
       showToast('已上传');
     });
     document.getElementById('hc-dealer-win').addEventListener('change', e => {

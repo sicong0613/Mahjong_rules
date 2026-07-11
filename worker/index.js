@@ -23,6 +23,7 @@ const MAX_FANS_PER_UPLOAD = 25;   // 单副最多番种数
 const MAX_FAN_NAME_LEN   = 12;   // 番种名最大字符数
 const MAX_TILES_PER_HAND = 20;   // 单副最多牌数（含杠的第 4 张，留余量）
 const MAX_TILE_CODE_LEN  = 3;    // 牌码最大字符数（如 1m / 0p）
+const MAX_PLAYER_LEN     = 24;   // 和牌人名最大字符数
 const RATE_LIMIT_PER_HOUR = 20;  // 同一 IP 每小时最多上报次数
 
 export default {
@@ -95,14 +96,17 @@ async function postStats(request, env) {
     .filter(t => typeof t === 'string' && t.length > 0 && t.length <= MAX_TILE_CODE_LEN)
     .slice(0, MAX_TILES_PER_HAND);
 
+  // 和牌人（可选，仅用于追踪；非登录/鉴权）
+  const player = (typeof body?.player === 'string' ? body.player.trim() : '').slice(0, MAX_PLAYER_LEN);
+
   // 上传时间 + 按 IP 判定的地点/时区（Cloudflare 边缘提供，服务端记录）
   const ts  = Date.now();
   const geo = buildGeo(request.cf, ts);
 
   // 写审计日志（一行 = 一副牌）
   await env.DB
-    .prepare('INSERT INTO upload_log (ts, ip, tiles, fans, geo) VALUES (?, ?, ?, ?, ?)')
-    .bind(ts, ip, JSON.stringify(tiles), JSON.stringify(fans), JSON.stringify(geo))
+    .prepare('INSERT INTO upload_log (ts, ip, tiles, fans, geo, player) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(ts, ip, JSON.stringify(tiles), JSON.stringify(fans), JSON.stringify(geo), player)
     .run();
 
   // 原子累加计数（D1 batch），fans 已按副去重
@@ -177,10 +181,10 @@ async function getLogs(request, env) {
 
   const { results } = ip
     ? await env.DB
-        .prepare('SELECT id, ts, ip, tiles, fans, geo FROM upload_log WHERE ip = ? ORDER BY ts DESC LIMIT ? OFFSET ?')
+        .prepare('SELECT id, ts, ip, tiles, fans, geo, player FROM upload_log WHERE ip = ? ORDER BY ts DESC LIMIT ? OFFSET ?')
         .bind(ip, limit, offset).all()
     : await env.DB
-        .prepare('SELECT id, ts, ip, tiles, fans, geo FROM upload_log ORDER BY ts DESC LIMIT ? OFFSET ?')
+        .prepare('SELECT id, ts, ip, tiles, fans, geo, player FROM upload_log ORDER BY ts DESC LIMIT ? OFFSET ?')
         .bind(limit, offset).all();
 
   return json(results);

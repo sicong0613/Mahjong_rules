@@ -43,7 +43,7 @@
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | `GET`    | `/api/fan-stats` | 公开 | 返回 `{ fans: [{name, count}], total }` |
-| `POST`   | `/api/fan-stats` | 限流 | body `{ fans: ["立直", ...], tiles: ["1m","2m", ...] }`，记录一副和牌（`tiles` 可选） |
+| `POST`   | `/api/fan-stats` | 限流 | body `{ fans: ["立直", ...], tiles: ["1m","2m", ...], player: "张三" }`，记录一副和牌（`tiles`/`player` 可选） |
 | `GET`    | `/api/fan-logs?token=&limit=&offset=&ip=` | 管理员 | 审计日志（含 `ts`、`ip`、`tiles`、`fans`、`geo`） |
 | `DELETE` | `/api/fan-logs?token=&id=` | 管理员 | 删除单条记录并重算计数 |
 | `DELETE` | `/api/fan-logs?token=&ip=` | 管理员 | 删除某 IP 的全部记录并重算计数 |
@@ -116,9 +116,9 @@ wrangler deploy
 
 ## 数据库迁移（已部署过、已有数据的库）
 
-新增了 `upload_log.tiles`、`upload_log.geo` 两列，并把计数语义改为「以副为
-单位」。对**已存在**的库，`CREATE TABLE IF NOT EXISTS` 不会自动加列，需手动
-迁移一次。
+新增了 `upload_log.tiles`、`upload_log.geo`、`upload_log.player` 三列，并把
+计数语义改为「以副为单位」。对**已存在**的库，`CREATE TABLE IF NOT EXISTS`
+不会自动加列，需手动迁移一次。
 
 **在 Cloudflare 后台跑**：Dashboard → Storage & Databases → D1 →
 `mahjong-stats` → **Console** 标签，把下面的 SQL 逐条粘贴运行（不要带
@@ -130,6 +130,9 @@ ALTER TABLE upload_log ADD COLUMN tiles TEXT NOT NULL DEFAULT '[]';
 
 -- 2. 补上 geo 列（历史行地点/时区未知，置空对象）
 ALTER TABLE upload_log ADD COLUMN geo TEXT NOT NULL DEFAULT '{}';
+
+-- 2b. 补上 player 列（和牌人，历史行未知，置空串）
+ALTER TABLE upload_log ADD COLUMN player TEXT NOT NULL DEFAULT '';
 
 -- 3. 按「每副去重」重算 fan_counts，使历史数据符合新语义
 DELETE FROM fan_counts;
