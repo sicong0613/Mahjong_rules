@@ -470,12 +470,6 @@
                 sd.className = 'common-hand-desc';
                 sd.textContent = s.desc;
                 sub.appendChild(sn); sub.appendChild(sd);
-                if (s.example) {
-                  const tiles = document.createElement('div');
-                  tiles.className = 'common-hand-tiles';
-                  renderTileStr(s.example, tiles);
-                  sub.appendChild(tiles);
-                }
                 card.appendChild(sub);
               });
               grid.appendChild(card);
