@@ -7,6 +7,7 @@
 //   GET  /api/fan-stats/export?token=&format=    → 导出 fan_counts（json/csv，管理员）
 //   PUT  /api/fan-stats/import?token=            → 覆盖导入 fan_counts（管理员）
 //   GET  /api/fan-logs?token=&limit=&offset=&ip= → 审计日志（管理员）
+//   DELETE /api/fan-logs?token=&id=              → 删除单条记录并重算计数
 //   DELETE /api/fan-logs?token=&ip=              → 清除某 IP 的记录并重算计数
 //
 // 注意：import 直接覆写 fan_counts，不触碰 upload_log。
@@ -186,15 +187,23 @@ async function getLogs(request, env) {
 }
 
 // ── DELETE /api/fan-logs ───────────────────────────────────────────
-// 删除指定 IP 的所有日志，并从剩余日志重算番型计数
+// 按 id 删单条，或按 ip 删该 IP 全部；随后从剩余日志重算番型计数
 async function deleteLogs(request, env) {
   if (!checkAdmin(request, env)) return adminError(env);
 
   const url = new URL(request.url);
+  const id  = url.searchParams.get('id');
   const ip  = url.searchParams.get('ip');
-  if (!ip) return json({ error: 'ip required' }, 400);
 
-  await env.DB.prepare('DELETE FROM upload_log WHERE ip = ?').bind(ip).run();
+  if (id != null && id !== '') {
+    const idNum = parseInt(id, 10);
+    if (!Number.isInteger(idNum)) return json({ error: 'invalid id' }, 400);
+    await env.DB.prepare('DELETE FROM upload_log WHERE id = ?').bind(idNum).run();
+  } else if (ip) {
+    await env.DB.prepare('DELETE FROM upload_log WHERE ip = ?').bind(ip).run();
+  } else {
+    return json({ error: 'id or ip required' }, 400);
+  }
 
   // 从剩余日志重算 fan_counts（以「副」为单位：每副内番种去重后再计数）
   await env.DB.batch([

@@ -45,7 +45,8 @@
 | `GET`    | `/api/fan-stats` | 公开 | 返回 `{ fans: [{name, count}], total }` |
 | `POST`   | `/api/fan-stats` | 限流 | body `{ fans: ["立直", ...], tiles: ["1m","2m", ...] }`，记录一副和牌（`tiles` 可选） |
 | `GET`    | `/api/fan-logs?token=&limit=&offset=&ip=` | 管理员 | 审计日志（含 `ts`、`ip`、`tiles`、`fans`、`geo`） |
-| `DELETE` | `/api/fan-logs?token=&ip=` | 管理员 | 删除某 IP 的记录并重算计数 |
+| `DELETE` | `/api/fan-logs?token=&id=` | 管理员 | 删除单条记录并重算计数 |
+| `DELETE` | `/api/fan-logs?token=&ip=` | 管理员 | 删除某 IP 的全部记录并重算计数 |
 
 校验/限流参数（在 `index.js` 顶部可调）：
 

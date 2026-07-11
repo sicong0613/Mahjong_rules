@@ -42,6 +42,7 @@
     td.ip { white-space: nowrap; font-family: monospace; font-size: .76rem; }
     td.ip button { display: block; margin-top: 4px; font-size: .7rem; padding: 2px 6px;
       border: 1px solid #c0392b; color: #c0392b; background: transparent; border-radius: 4px; cursor: pointer; }
+    td.ip button.one { border-color: var(--text-muted); color: var(--text-muted); }
   </style>
 </head>
 <body>
@@ -149,14 +150,18 @@
       return td;
     }
 
-    function ipCell(ip) {
+    function ipCell(r) {
       const td = document.createElement('td');
       td.className = 'ip';
-      td.append(ip || 'unknown');
-      const btn = document.createElement('button');
-      btn.textContent = '删除此 IP 全部';
-      btn.onclick = () => deleteIp(ip);
-      td.appendChild(btn);
+      td.append(r.ip || 'unknown');
+      const btnIp = document.createElement('button');
+      btnIp.textContent = '删除此 IP 全部';
+      btnIp.onclick = () => deleteIp(r.ip);
+      const btnOne = document.createElement('button');
+      btnOne.className = 'one';
+      btnOne.textContent = '删除该记录';
+      btnOne.onclick = () => deleteRecord(r.id);
+      td.append(btnIp, btnOne);
       return td;
     }
 
@@ -189,13 +194,26 @@
         tr.appendChild(geoCell(geo));
         tr.appendChild(fansCell(fmtParse(r.fans, [])));
         tr.appendChild(tilesCell(fmtParse(r.tiles, [])));
-        tr.appendChild(ipCell(r.ip));
+        tr.appendChild(ipCell(r));
         rows.appendChild(tr);
       });
       $('tbl').hidden = logs.length === 0;
       const n = stats ? stats.total : '?';
       $('summary').textContent = `本次显示 ${logs.length} 条；数据库累计和牌总副数 n = ${n}`;
       if (logs.length === 0) showMsg('暂无记录');
+    }
+
+    async function deleteRecord(id) {
+      const token = tokenEl.value.trim();
+      if (id == null || !token) return;
+      if (!confirm(`确定删除这一条记录（#${id}）并重算番种计数？此操作不可撤销。`)) return;
+      try {
+        const res = await fetch(`/api/fan-logs?token=${encodeURIComponent(token)}&id=${encodeURIComponent(id)}`,
+          { method: 'DELETE' });
+        if (!res.ok) { showMsg(`删除失败：HTTP ${res.status}`, true); return; }
+        showMsg(`已删除记录 #${id}`);
+        load();
+      } catch (e) { showMsg('删除出错：' + e.message, true); }
     }
 
     async function deleteIp(ip) {
