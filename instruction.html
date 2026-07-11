@@ -740,9 +740,14 @@
           if (has) shown++;
         });
 
-        // 按频次从高到低重排
+        // 重排：频率降序 → 番数降序 → 名字
+        const tierOf = c => Number(c.dataset.fanTier) || 0;
+        const nameOf = c => c.querySelector('.common-hand-name')?.textContent || '';
         [...grid.children]
-          .sort((a, b) => cardCount(b) - cardCount(a))
+          .sort((a, b) =>
+            (cardCount(b) - cardCount(a)) ||
+            (tierOf(b) - tierOf(a)) ||
+            nameOf(a).localeCompare(nameOf(b), 'zh-Hans-CN'))
           .forEach(c => grid.appendChild(c));
 
         // 填入百分比，并把整卡背景做成「占比进度条」：
