@@ -184,6 +184,9 @@
     .common-hand-desc { font-size: .77rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 6px; }
     .common-hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
     .common-hand-pct { margin-left: auto; font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
+    /* 占比进度条：填充色沿用该番数的徽章色（.badge-N 提供 background-color） */
+    .common-hand-bar { height: 6px; margin-top: 8px; border-radius: 3px; background: var(--border); overflow: hidden; }
+    .common-hand-bar-fill { height: 100%; width: 0; border-radius: 3px; transition: width .4s ease; }
 
     /* ── 牌图片尺寸 ── */
     .tile-sm {
@@ -453,9 +456,19 @@
             header.appendChild(name);
             header.appendChild(pct);
 
+            const bar = document.createElement('div');
+            bar.className = 'common-hand-bar';
+            const fill = document.createElement('div');
+            fill.className = `common-hand-bar-fill badge-${f.fan}`;
+            bar.appendChild(fill);
+
             const desc = document.createElement('div');
             desc.className = 'common-hand-desc';
             desc.textContent = f.desc;
+
+            card.appendChild(header);
+            card.appendChild(bar);
+            card.appendChild(desc);
 
             const tileStr = item.tiles || f.example || '';
             if (tileStr) {
@@ -466,12 +479,7 @@
                 ? tsParts[0].trimEnd() + ' | ' + tsParts[1].trim()
                 : tileStr;
               renderTileStr(displayStr, tiles);
-              card.appendChild(header);
-              card.appendChild(desc);
               card.appendChild(tiles);
-            } else {
-              card.appendChild(header);
-              card.appendChild(desc);
             }
             grid.appendChild(card);
           });
@@ -654,6 +662,13 @@
           pct.className = 'common-hand-pct';
           header.appendChild(badge); header.appendChild(nameEl); header.appendChild(pct);
           card.appendChild(header);
+          const bar = document.createElement('div');
+          bar.className = 'common-hand-bar';
+          const fill = document.createElement('div');
+          fill.className = 'common-hand-bar-fill' + (f ? ` badge-${f.fan}` : '');
+          if (!f) fill.style.backgroundColor = 'var(--text-muted)';
+          bar.appendChild(fill);
+          card.appendChild(bar);
           const desc = document.createElement('div');
           desc.className = 'common-hand-desc';
           desc.textContent = f?.desc ?? '';
@@ -685,13 +700,15 @@
           .sort((a, b) => (freq[b.dataset.fanName] || 0) - (freq[a.dataset.fanName] || 0))
           .forEach(c => grid.appendChild(c));
 
-        // 填入百分比
-        if (total > 0) {
-          grid.querySelectorAll('.common-hand-pct').forEach(el => {
-            const count = freq[el.closest('.common-hand-card')?.dataset.fanName] || 0;
-            el.textContent = count ? (count / total * 100).toFixed(1) + '%' : '';
-          });
-        }
+        // 填入百分比与进度条宽度（占比 = 含该番的副数 / 总副数）
+        grid.querySelectorAll('.common-hand-card').forEach(card => {
+          const count = freq[card.dataset.fanName] || 0;
+          const pct = total > 0 ? count / total * 100 : 0;
+          const pctEl = card.querySelector('.common-hand-pct');
+          if (pctEl) pctEl.textContent = pct ? pct.toFixed(1) + '%' : '';
+          const fill = card.querySelector('.common-hand-bar-fill');
+          if (fill) fill.style.width = pct.toFixed(1) + '%';
+        });
 
         // 全部无上报数据时给个提示
         let note = document.getElementById('common-hands-empty');
