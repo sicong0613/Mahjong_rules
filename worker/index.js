@@ -7,7 +7,7 @@
 //   GET  /api/fan-stats/export?token=&format=    → 导出 fan_counts（json/csv，管理员）
 //   PUT  /api/fan-stats/import?token=            → 覆盖导入 fan_counts（管理员）
 //   GET  /api/fan-logs?token=&limit=&offset=&ip= → 审计日志（管理员）
-//   PUT  /api/fan-logs/import?token=             → 批量导入逐副记录（管理员）
+//   PUT  /api/fan-logs/import?token=&mode=       → 批量导入逐副记录（管理员，mode=replace 先清空）
 //   DELETE /api/fan-logs?token=&id=              → 删除单条记录并重算计数
 //   DELETE /api/fan-logs?token=&ip=              → 清除某 IP 的记录并重算计数
 //
@@ -196,7 +196,7 @@ async function getLogs(request, env) {
 //   ["平和","断幺"]                                  ← 仅番型汇总（简写）
 //   {fans:[...], ts?, player?, ip?, tiles?, geo?}    ← 完整记录，任一字段可省略/null
 // 省略/null 的字段在 admin 里不显示。每副插入一行 upload_log，随后重算 fan_counts。
-// 追加式：不清空已有记录；total 随之增长，占比更稳定。
+// 默认追加（不清空已有记录）；mode=replace 则先清空全部记录再导入（校验通过后才清）。
 async function importLogs(request, env) {
   if (!checkAdmin(request, env)) return adminError(env);
 
@@ -227,6 +227,10 @@ async function importLogs(request, env) {
       .bind(ts, ip, JSON.stringify(tiles), JSON.stringify(fans), JSON.stringify(geo), player));
   }
   if (inserts.length === 0) return json({ error: 'no valid hands' }, 400);
+
+  // 覆盖模式：先清空全部记录（仅在校验通过、确有可插入数据后才执行，避免误删）
+  const replace = new URL(request.url).searchParams.get('mode') === 'replace';
+  if (replace) await env.DB.prepare('DELETE FROM upload_log').run();
 
   // 分块批量插入（保守分块，避免超过 D1 batch 限制）
   const CHUNK = 50;

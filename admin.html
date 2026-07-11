@@ -58,7 +58,8 @@
     <input id="limit" type="number" value="200" min="1" max="1000" title="加载条数">
     <button id="load">加载</button>
     <button id="export" class="ghost" title="导出全部逐副记录（完整记录 JSON）">导出</button>
-    <button id="import" class="ghost" title="导入逐副记录（完整记录 JSON，追加）">导入</button>
+    <button id="importAppend" class="ghost" title="导入并追加到现有数据">导入（追加）</button>
+    <button id="importReplace" class="ghost" title="先清空全部记录再导入">导入（覆盖）</button>
     <input id="importFile" type="file" accept="application/json,.json" hidden>
     <button id="forget" class="ghost" title="清除本机保存的 token 并重新输入">忘记 token</button>
   </div>
@@ -320,10 +321,15 @@
       if (!Array.isArray(hands) || hands.length === 0) {
         showMsg('JSON 应为「副」数组：每副可写 ["平和","断幺"]，或 {fans:[...],ts,player,ip,tiles,geo}', true); return;
       }
-      if (!confirm(`确认导入 ${hands.length} 副记录？将追加到现有数据并重算计数。`)) return;
+      const replace = _importMode === 'replace';
+      const ask = replace
+        ? `确认【覆盖导入】${hands.length} 副？将先清空全部现有记录再导入，此操作不可撤销。`
+        : `确认导入 ${hands.length} 副记录？将追加到现有数据并重算计数。`;
+      if (!confirm(ask)) return;
       showMsg('导入中…');
       try {
-        const res = await fetch(`/api/fan-logs/import?token=${encodeURIComponent(token)}`, {
+        const url = `/api/fan-logs/import?token=${encodeURIComponent(token)}${replace ? '&mode=replace' : ''}`;
+        const res = await fetch(url, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hands),
         });
         const data = await res.json().catch(() => ({}));
@@ -333,9 +339,11 @@
       } catch (e2) { showMsg('导入出错：' + e2.message, true); }
     }
 
+    let _importMode = 'append';
     $('load').onclick = load;
     $('export').onclick = exportRecords;
-    $('import').onclick = () => $('importFile').click();
+    $('importAppend').onclick = () => { _importMode = 'append'; $('importFile').click(); };
+    $('importReplace').onclick = () => { _importMode = 'replace'; $('importFile').click(); };
     $('importFile').addEventListener('change', importRecords);
     tokenEl.addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
     if (tokenEl.value) load();
