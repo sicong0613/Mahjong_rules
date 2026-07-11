@@ -186,6 +186,10 @@
     .common-hand-pct { margin-left: auto; font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
     /* 整卡背景作为占比进度条，背景在加载统计后由 JS 设置 */
     .common-hand-card { transition: background .45s ease; }
+    /* 役牌合并卡：各子番之间用虚线分隔 */
+    .yakuhai-sub { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+    .yakuhai-sub:first-of-type { margin-top: 6px; padding-top: 0; border-top: none; }
+    .yakuhai-sub-name { font-weight: 700; font-size: .82rem; margin-bottom: 3px; }
 
     /* ── 牌图片尺寸 ── */
     .tile-sm {
@@ -434,6 +438,50 @@
           const grid = document.createElement('div');
           grid.className = 'common-hands-grid';
           block.items.forEach(item => {
+            // 役牌：把多个番种合成一张卡，依次列出各自简介与牌例（仅此一处特殊分组）
+            if (item.ids) {
+              const subs = item.ids.map(id => FANS_DATA.find(x => x.id === id)).filter(Boolean);
+              if (subs.length === 0) return;
+              const card = document.createElement('div');
+              card.className = 'common-hand-card';
+              card.dataset.fanGroup = subs.map(s => s.name).join(','); // 统计：任一有数据即显示，占比取合计
+              card.dataset.fanTier  = subs[0].fan;
+
+              const header = document.createElement('div');
+              header.className = 'common-hand-header';
+              const badge = document.createElement('span');
+              badge.className = `fan-badge badge-${subs[0].fan}`;
+              badge.textContent = subs[0].fan;
+              const name = document.createElement('span');
+              name.className = 'common-hand-name';
+              name.textContent = item.groupName;
+              const pct = document.createElement('span');
+              pct.className = 'common-hand-pct';
+              header.appendChild(badge); header.appendChild(name); header.appendChild(pct);
+              card.appendChild(header);
+
+              subs.forEach(s => {
+                const sub = document.createElement('div');
+                sub.className = 'yakuhai-sub';
+                const sn = document.createElement('div');
+                sn.className = 'yakuhai-sub-name';
+                sn.textContent = s.name;
+                const sd = document.createElement('div');
+                sd.className = 'common-hand-desc';
+                sd.textContent = s.desc;
+                sub.appendChild(sn); sub.appendChild(sd);
+                if (s.example) {
+                  const tiles = document.createElement('div');
+                  tiles.className = 'common-hand-tiles';
+                  renderTileStr(s.example, tiles);
+                  sub.appendChild(tiles);
+                }
+                card.appendChild(sub);
+              });
+              grid.appendChild(card);
+              return;
+            }
+
             const f = FANS_DATA.find(x => x.id === item.id);
             if (!f) return;
             if (f.fan === 1) return;   // 不显示一番番型（不影响记录）
@@ -645,8 +693,17 @@
         const grid = document.querySelector('.common-hands-grid');
         if (!grid) return;
 
-        // 把 API 里有上传但格子里还没有的番种补充进来
-        const existing = new Set([...grid.querySelectorAll('.common-hand-card')].map(c => c.dataset.fanName));
+        // 该卡对应的上报副数：分组卡（役牌）取各子番合计，普通卡取自身
+        const cardCount = card => card.dataset.fanGroup
+          ? card.dataset.fanGroup.split(',').reduce((s, n) => s + (freq[n] || 0), 0)
+          : (freq[card.dataset.fanName] || 0);
+
+        // 已在格子里的番种名（含分组卡的各子番），避免重复补充
+        const existing = new Set();
+        grid.querySelectorAll('.common-hand-card').forEach(c => {
+          if (c.dataset.fanGroup) c.dataset.fanGroup.split(',').forEach(n => existing.add(n));
+          else if (c.dataset.fanName) existing.add(c.dataset.fanName);
+        });
         fans.forEach(({ name, count }) => {
           if (!count || existing.has(name)) return;
           const f = FANS_DATA.find(x => x.name === name);
@@ -688,22 +745,21 @@
         // 只保留有上报数据（count > 0）的番种；额外排除一番番型（不显示，不影响记录）
         let shown = 0;
         grid.querySelectorAll('.common-hand-card').forEach(card => {
-          const has = (freq[card.dataset.fanName] || 0) > 0 && card.dataset.fanTier !== '1';
+          const has = cardCount(card) > 0 && card.dataset.fanTier !== '1';
           card.hidden = !has;
           if (has) shown++;
         });
 
         // 按频次从高到低重排
         [...grid.children]
-          .sort((a, b) => (freq[b.dataset.fanName] || 0) - (freq[a.dataset.fanName] || 0))
+          .sort((a, b) => cardCount(b) - cardCount(a))
           .forEach(c => grid.appendChild(c));
 
         // 填入百分比，并把整卡背景做成「占比进度条」：
         // 番数对应色 + 透明度，从左填充到占比宽度，其余保持卡片底色
         const rootStyle = getComputedStyle(document.documentElement);
         grid.querySelectorAll('.common-hand-card').forEach(card => {
-          const count = freq[card.dataset.fanName] || 0;
-          const pct = total > 0 ? count / total * 100 : 0;
+          const pct = total > 0 ? Math.min(cardCount(card) / total * 100, 100) : 0;
           const pctEl = card.querySelector('.common-hand-pct');
           if (pctEl) pctEl.textContent = pct ? pct.toFixed(1) + '%' : '';
           const tier = card.dataset.fanTier;

@@ -217,9 +217,8 @@ const INSTRUCTION_DATA = [
       // 只需写 fans.js 中的 id，名称/番数/描述/例牌均自动从 FANS_DATA 读取
       // 若需覆盖例牌，可额外加 tiles 字段（格式同 fans.js example）
       { type: 'common-hands', items: [
-        { id: 'jian_ke' },
-        { id: 'quan_feng_ke' },
-        { id: 'men_feng_ke' },
+        // 役牌：门风刻/圈风刻/箭刻 合成一张卡（特殊分组，仅此一处）
+        { groupName: '役牌', ids: ['men_feng_ke', 'quan_feng_ke', 'jian_ke'] },
         { id: 'men_qian_qing' },
         { id: 'ping_he' },
         { id: 'si_gui_yi' },
