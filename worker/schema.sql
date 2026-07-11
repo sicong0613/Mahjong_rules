@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS fan_counts (
 -- 上报审计日志：一行 = 一副和牌
 --   ts    Unix ms（服务端上传时刻，UTC）
 --   ip    Cloudflare CF-Connecting-IP（服务端记录）
---   tiles JSON 数组，整副牌的牌码（如 ["1m","2m",...]，红五记作 0m/0p/0s）
+--   tiles JSON，结构化牌型 {concealed:[立牌],win:和牌张,melds:[[副露],...]}
+--         （红五记作 0m/0p/0s；旧记录为平铺数组，兼容保留）
 --   fans  JSON 数组，该副牌去重后的番种名
 --   geo   JSON，按 IP 判定的地点与本地时间：
 --         {country,region,city,tz,offset,local,tzAbbr}

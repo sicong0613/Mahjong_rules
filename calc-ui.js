@@ -872,7 +872,7 @@
 
   // ─── 计算 ──────────────────────────────────────────────────────
   let _lastResult = null;
-  let _lastTiles  = [];   // 上次计算的整副牌牌码，用于上报
+  let _lastHand   = null; // 上次计算的整副牌（结构化：立牌/和牌张/副露），用于上报
   let _calcSig    = null; // 上次计算时的手牌+选项签名；与当前不同即视为已改动
   let _uploaded   = false;// 当前计算结果是否已上传（上传后禁用上传按钮，直到重新计算）
 
@@ -899,15 +899,15 @@
     if (dom.uploadBtn) dom.uploadBtn.disabled = !calced || _uploaded; // 上传后禁用，重新计算后恢复
   }
 
-  // 收集当前整副牌的牌码（立牌 + 副露/杠 + 和牌张，和牌张放最后）
+  // 收集当前整副牌，结构化：立牌 / 和牌张 / 副露（副露展示在和牌张右边）
   // code 为数字位域，用 tileToSvg 转成字符串码：1m/0p/5s/E/Z…（红五为 0m/0p/0s）
-  function currentHandTiles() {
-    const out = [];
-    const push = (code, isRed) => out.push(tileToSvg(code, isRed).replace('.svg', ''));
-    for (const t of S.standing) if (t) push(t.code, t.isRed);
-    for (const meld of S.melds) for (const t of meld.tiles) push(t.code, t.isRed);
-    if (S.winTile) push(S.winTile.code, S.winTile.isRed);
-    return out;
+  function currentHand() {
+    const codeOf = t => tileToSvg(t.code, t.isRed).replace('.svg', '');
+    return {
+      concealed: S.standing.filter(Boolean).map(codeOf),
+      win: S.winTile ? codeOf(S.winTile) : null,
+      melds: S.melds.map(m => m.tiles.map(codeOf)),
+    };
   }
 
   function doCalculate() {
@@ -915,7 +915,7 @@
       const r = { total: 48, fans: [{ fan: 48, count: 1, value: 48, name: '流局满贯' }] };
       renderResult(r);
       _lastResult = r;
-      _lastTiles  = [];   // 流局满贯无牌型
+      _lastHand   = null;   // 流局满贯无牌型
       _calcSig    = handSignature();
       _uploaded   = false;
       updateActionButtons();
@@ -991,20 +991,20 @@
     }
     renderResult(result);
     _lastResult = result.error ? null : result;
-    _lastTiles  = result.error ? [] : currentHandTiles();
+    _lastHand   = result.error ? null : currentHand();
     _calcSig    = result.error ? null : handSignature();
     _uploaded   = false;
     updateActionButtons();
     return result;
   }
 
-  function reportFanStats(fans, tiles, player) {
+  function reportFanStats(fans, hand, player) {
     const names = fans.map(f => f.name).filter(Boolean);
     if (names.length === 0) return;
     fetch('/api/fan-stats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fans: names, tiles: tiles || [], player: player || '' }),
+      body: JSON.stringify({ fans: names, tiles: hand || {}, player: player || '' }),
     }).catch(() => {});
   }
 
@@ -1238,7 +1238,7 @@
       document.getElementById('hc-prevalent').value = 0;
       document.getElementById('hc-seat').value      = 0;
       _lastResult = null;
-      _lastTiles  = [];
+      _lastHand   = null;
       _calcSig    = null;
       _uploaded   = false;
       render();
@@ -1251,7 +1251,7 @@
       if (!_lastResult || _uploaded) return;
       const res = await confirmUpload();
       if (!res) return;
-      reportFanStats(_lastResult.fans, _lastTiles, res.player);
+      reportFanStats(_lastResult.fans, _lastHand, res.player);
       _uploaded = true;                 // 上传后禁用上传按钮，直到重新计算
       updateActionButtons();
       showToast('已上传');

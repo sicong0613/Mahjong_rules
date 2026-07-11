@@ -3,7 +3,7 @@
 // total = upload_log 行数(n)，前端展示的频率即 m/n。
 // 接口：
 //   GET  /api/fan-stats                          → 返回全量番型计数（公开）
-//   POST /api/fan-stats  body:{fans:[...],tiles:[...]} → 上报一副和牌（有限流）
+//   POST /api/fan-stats  body:{fans:[...],tiles:{concealed,win,melds},player} → 上报一副和牌（有限流）
 //   GET  /api/fan-stats/export?token=&format=    → 导出 fan_counts（json/csv，管理员）
 //   PUT  /api/fan-stats/import?token=            → 覆盖导入 fan_counts（管理员）
 //   GET  /api/fan-logs?token=&limit=&offset=&ip= → 审计日志（管理员）
@@ -90,11 +90,21 @@ async function postStats(request, env) {
   )].slice(0, MAX_FANS_PER_UPLOAD);
   if (fans.length === 0) return json({ error: 'no valid fan names' }, 400);
 
-  // 牌型（可选）：整副牌的牌码
-  const rawTiles = Array.isArray(body?.tiles) ? body.tiles : [];
-  const tiles = rawTiles
-    .filter(t => typeof t === 'string' && t.length > 0 && t.length <= MAX_TILE_CODE_LEN)
-    .slice(0, MAX_TILES_PER_HAND);
+  // 牌型（可选）：结构化 {concealed:[], win:code|null, melds:[[...]]}
+  // 兼容旧格式（平铺数组）：直接原样清洗后存储
+  const isCode = t => typeof t === 'string' && t.length > 0 && t.length <= MAX_TILE_CODE_LEN;
+  const codeList = (arr, max) => Array.isArray(arr) ? arr.filter(isCode).slice(0, max) : [];
+  const bt = body?.tiles;
+  let tiles;
+  if (bt && typeof bt === 'object' && !Array.isArray(bt)) {
+    tiles = {
+      concealed: codeList(bt.concealed, MAX_TILES_PER_HAND),
+      win: isCode(bt.win) ? bt.win : null,
+      melds: (Array.isArray(bt.melds) ? bt.melds : []).slice(0, 6).map(m => codeList(m, 4)),
+    };
+  } else {
+    tiles = codeList(bt, MAX_TILES_PER_HAND);   // 旧格式：平铺数组
+  }
 
   // 和牌人（可选，仅用于追踪；非登录/鉴权）
   const player = (typeof body?.player === 'string' ? body.player.trim() : '').slice(0, MAX_PLAYER_LEN);
