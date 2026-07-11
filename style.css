@@ -944,6 +944,31 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 }
 .hc-toast.hc-toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ── 上传确认弹窗 ── */
+.hc-modal-overlay {
+  position: fixed; inset: 0; z-index: 700;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.hc-modal {
+  background: var(--surface); color: inherit;
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 18px 14px; width: min(90vw, 340px);
+  box-shadow: 0 8px 30px rgba(0,0,0,.3);
+}
+.hc-modal-msg { font-size: .9rem; line-height: 1.6; margin: 0 0 12px; }
+.hc-modal-check {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .82rem; color: var(--text-muted); cursor: pointer; margin-bottom: 14px;
+}
+.hc-modal-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.hc-modal-btn {
+  padding: 6px 16px; border-radius: 6px;
+  border: 1px solid var(--border); background: transparent; color: inherit;
+  cursor: pointer; font-size: .85rem;
+}
+.hc-modal-ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+
 /* 流局满贯：牌区与键盘区锁定 */
 .hc-tiles-locked #hc-standing-area,
 .hc-tiles-locked #hc-win-area,

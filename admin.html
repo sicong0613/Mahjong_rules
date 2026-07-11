@@ -72,10 +72,26 @@
   <script>
     const $ = id => document.getElementById(id);
     const tokenEl = $('token'), limitEl = $('limit');
+    const TOKEN_COOKIE = 'hc_admin_token';
 
-    // 记住 token（仅存本机 localStorage）
-    tokenEl.value = localStorage.getItem('adminToken') || '';
-    $('forget').onclick = () => { localStorage.removeItem('adminToken'); tokenEl.value = ''; };
+    // ── Cookie ──
+    function setCookie(name, value, days) {
+      const exp = new Date(Date.now() + days * 864e5).toUTCString();
+      document.cookie = `${name}=${encodeURIComponent(value)}; expires=${exp}; path=/; SameSite=Lax`;
+    }
+    function getCookie(name) {
+      return document.cookie.split('; ').reduce((r, c) => {
+        const i = c.indexOf('='); const k = c.slice(0, i);
+        return k === name ? decodeURIComponent(c.slice(i + 1)) : r;
+      }, '');
+    }
+    function delCookie(name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+    }
+
+    // 记住 token（本机 cookie，登录一次后免重输，有效期约一年）
+    tokenEl.value = getCookie(TOKEN_COOKIE) || '';
+    $('forget').onclick = () => { delCookie(TOKEN_COOKIE); tokenEl.value = ''; showMsg('已忘记本机 token'); };
 
     function fmtParse(s, fallback) { try { return JSON.parse(s); } catch { return fallback; } }
 
@@ -147,7 +163,7 @@
     async function load() {
       const token = tokenEl.value.trim();
       if (!token) { showMsg('请先填写 ADMIN_TOKEN', true); return; }
-      localStorage.setItem('adminToken', token);
+      setCookie(TOKEN_COOKIE, token, 365);
       showMsg('加载中…');
       const limit = Math.min(Math.max(parseInt(limitEl.value) || 200, 1), 1000);
       try {

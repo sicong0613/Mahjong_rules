@@ -80,6 +80,18 @@
   // ─── 工具 ─────────────────────────────────────────────────────
   function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
 
+  // ─── Cookie ───────────────────────────────────────────────────
+  function setCookie(name, value, days) {
+    const exp = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${exp}; path=/; SameSite=Lax`;
+  }
+  function getCookie(name) {
+    return document.cookie.split('; ').reduce((r, c) => {
+      const i = c.indexOf('='); const k = c.slice(0, i);
+      return k === name ? decodeURIComponent(c.slice(i + 1)) : r;
+    }, '');
+  }
+
   // 构建一个牌元素（img 版本）
   function makeTileEl(code, isRed, size) {
     const d = el('div', `hc-tile hc-tile-${size}`);
@@ -1021,6 +1033,37 @@
 
   // ─── Toast ─────────────────────────────────────────────────────
   let _toastTimer;
+  // 上传确认弹窗（带「不再提示」勾选框，由 cookie 记忆）。返回 Promise<boolean>
+  const UPLOAD_NOCONFIRM_COOKIE = 'hc_upload_noconfirm';
+  function confirmUpload() {
+    if (getCookie(UPLOAD_NOCONFIRM_COOKIE) === '1') return Promise.resolve(true);
+    return new Promise(resolve => {
+      const overlay = el('div', 'hc-modal-overlay');
+      const box = el('div', 'hc-modal');
+      const msg = el('p', 'hc-modal-msg');
+      msg.textContent = '上传此次和牌的番种数据到数据库？若不理解此选项请不要上传。';
+      const label = el('label', 'hc-modal-check');
+      const cb = document.createElement('input'); cb.type = 'checkbox';
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' 不再提示'));
+      const btns = el('div', 'hc-modal-btns');
+      const cancel = el('button', 'hc-modal-btn'); cancel.textContent = '取消';
+      const ok = el('button', 'hc-modal-btn hc-modal-ok'); ok.textContent = '上传';
+      btns.append(cancel, ok);
+      box.append(msg, label, btns);
+      overlay.appendChild(box);
+      document.getElementById('hand-calc-page').appendChild(overlay);
+
+      const close = result => { overlay.remove(); resolve(result); };
+      cancel.onclick = () => close(false);
+      ok.onclick = () => {
+        if (cb.checked) setCookie(UPLOAD_NOCONFIRM_COOKIE, '1', 365);
+        close(true);
+      };
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+    });
+  }
+
   function showToast(msg) {
     let t = document.getElementById('hc-toast');
     if (!t) { t = el('div', 'hc-toast'); t.id = 'hc-toast'; document.getElementById('hand-calc-page').appendChild(t); }
@@ -1169,9 +1212,9 @@
     });
     document.getElementById('hc-buffer-clear').addEventListener('click', () => { S.buffer = []; render(); });
     dom.calcBtn.addEventListener('click', () => Calculator.ready.then(doCalculate));
-    dom.uploadBtn?.addEventListener('click', () => {
+    dom.uploadBtn?.addEventListener('click', async () => {
       if (!_lastResult) return;
-      if (!confirm('上传此次和牌的番种数据到数据库？\n若不理解此选项请不要上传。')) return;
+      if (!(await confirmUpload())) return;
       reportFanStats(_lastResult.fans, _lastTiles);
       showToast('已上传');
     });
