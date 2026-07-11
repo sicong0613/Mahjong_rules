@@ -186,10 +186,8 @@
     .common-hand-pct { margin-left: auto; font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
     /* 整卡背景作为占比进度条，背景在加载统计后由 JS 设置 */
     .common-hand-card { transition: background .45s ease; }
-    /* 役牌合并卡：各子番之间用虚线分隔 */
-    .yakuhai-sub { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
-    .yakuhai-sub:first-of-type { margin-top: 6px; padding-top: 0; border-top: none; }
-    .yakuhai-sub-name { font-weight: 700; font-size: .82rem; margin-bottom: 3px; }
+    /* 役牌合并卡：标题下的子番名一行 */
+    .yakuhai-names { font-weight: 700; font-size: .82rem; margin: 2px 0 5px; }
 
     /* ── 牌图片尺寸 ── */
     .tile-sm {
@@ -438,7 +436,7 @@
           const grid = document.createElement('div');
           grid.className = 'common-hands-grid';
           block.items.forEach(item => {
-            // 役牌：把多个番种合成一张卡，依次列出各自简介与牌例（仅此一处特殊分组）
+            // 役牌：把多个番种合成一张卡（仅此一处特殊分组）
             if (item.ids) {
               const subs = item.ids.map(id => FANS_DATA.find(x => x.id === id)).filter(Boolean);
               if (subs.length === 0) return;
@@ -460,18 +458,16 @@
               header.appendChild(badge); header.appendChild(name); header.appendChild(pct);
               card.appendChild(header);
 
-              subs.forEach(s => {
-                const sub = document.createElement('div');
-                sub.className = 'yakuhai-sub';
-                const sn = document.createElement('div');
-                sn.className = 'yakuhai-sub-name';
-                sn.textContent = s.name;
-                const sd = document.createElement('div');
-                sd.className = 'common-hand-desc';
-                sd.textContent = s.desc;
-                sub.appendChild(sn); sub.appendChild(sd);
-                card.appendChild(sub);
-              });
+              const names = document.createElement('div');
+              names.className = 'yakuhai-names';
+              names.textContent = subs.map(s => s.name).join(' / ');
+              card.appendChild(names);
+
+              const desc = document.createElement('div');
+              desc.className = 'common-hand-desc';
+              desc.textContent = '碰后即刻获得两番，详见速查表。';
+              card.appendChild(desc);
+
               grid.appendChild(card);
               return;
             }

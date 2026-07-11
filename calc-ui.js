@@ -1065,7 +1065,7 @@
       msg.textContent = '上传此次和牌的番种数据到数据库？若不理解此选项请不要上传。';
 
       const field = el('label', 'hc-modal-field');
-      field.append('和牌人（选填，仅用于追踪谁和了牌，不是登录）');
+      field.append('和牌人（选填）');
       const input = document.createElement('input');
       input.type = 'text'; input.className = 'hc-modal-input';
       input.placeholder = '可留空';
