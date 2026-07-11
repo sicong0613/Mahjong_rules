@@ -740,13 +740,13 @@
           if (has) shown++;
         });
 
-        // 重排：频率降序 → 番数降序 → 名字
+        // 重排：频率降序 → 番数升序 → 名字
         const tierOf = c => Number(c.dataset.fanTier) || 0;
         const nameOf = c => c.querySelector('.common-hand-name')?.textContent || '';
         [...grid.children]
           .sort((a, b) =>
             (cardCount(b) - cardCount(a)) ||
-            (tierOf(b) - tierOf(a)) ||
+            (tierOf(a) - tierOf(b)) ||
             nameOf(a).localeCompare(nameOf(b), 'zh-Hans-CN'))
           .forEach(c => grid.appendChild(c));
 
