@@ -639,7 +639,7 @@ const FANS_DATA = [
     handTypes: ["33332", "七对", "不靠"], meldAllowed: false,
     tags: ["门清"], source: "国标" },
 
-  { id: "bu_qiu_ren", name: "门清自摸和", nameEn: "Fully Concealed Self-Draw", nameAlt: ["不求人"], fan: 2,
+  { id: "bu_qiu_ren", name: "门清自摸和", nameEn: "Fully Concealed Self-Draw", nameAlt: ["不求人", "门清自摸"], fan: 2,
     desc: "门清状态下以自摸形式胡牌。可以与门前清复合。",
     conditions: "村规修正：必然门清的牌型只失去门前清的 2 番，仍可计此 2 番。",
     excludes: [],

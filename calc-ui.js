@@ -545,7 +545,7 @@
     return formatPointRow(row, selfDrawn, dealerWin);
   }
 
-  // 必然门清番种：这些牌型结构上不允许副露，故自摸时只计不求人，不额外追加门前清
+  // 必然门清番种：这些牌型结构上不允许副露，故自摸时只计门清自摸，不额外追加门前清
   const NECESSARILY_CONCEALED_FANS = new Set([
     '十三幺', '七对子', '连七对', '七星不靠', '全不靠', '九莲宝灯', '四暗刻单骑', '二杯口',
   ]);
@@ -554,15 +554,15 @@
   function applyVillageRules(result) {
     const fans = [...result.fans];
 
-    // 村规1：门清自摸 → 不求人（2番）+ 门前清（2番）并列计算
-    // 必然门清番种（十三幺/七对子等）只计不求人，不追加门前清
+    // 村规1：门清（无副露）自摸时 → 门清自摸（2番）+ 门前清（2番）并列计算
+    // 必然门清番种（十三幺/七对子等）只计门清自摸，不追加门前清
     if (S.selfDrawn && S.melds.length === 0) {
-      // 1a. 必然门清番种：WASM给"非门清自摸和"(1番)时，升级为不求人(2番)
-      const nonMenIdx = fans.findIndex(f => f.name === '非门清自摸和');
-      if (nonMenIdx !== -1) fans[nonMenIdx] = { ...fans[nonMenIdx], name: '不求人' };
+      // 1a. 必然门清番种：WASM给"非门清自摸"(1番)时，升级为门清自摸(2番)
+      const nonMenIdx = fans.findIndex(f => f.name === '非门清自摸');
+      if (nonMenIdx !== -1) fans[nonMenIdx] = { ...fans[nonMenIdx], name: '门清自摸' };
 
-      // 1b. 有不求人时额外追加门前清（2番），但必然门清牌型除外
-      const hasBuQiuRen = fans.some(f => f.name === '不求人');
+      // 1b. 有门清自摸时额外追加门前清（2番），但必然门清牌型除外
+      const hasBuQiuRen = fans.some(f => f.name === '门清自摸');
       const hasMenQian  = fans.some(f => f.name === '门前清');
       const isNecessarilyConcealed = fans.some(f => NECESSARILY_CONCEALED_FANS.has(f.name));
       if (hasBuQiuRen && !hasMenQian && !isNecessarilyConcealed) {
@@ -573,7 +573,7 @@
     // 村规2：天和 / 地和 / 人和（手动勾选，排斥门前清/门清自摸和）
     const specialFan = S.fan_tian_he ? '天和' : S.fan_di_he ? '地和' : S.fan_ren_he ? '人和' : null;
     if (specialFan) {
-      const excluded = new Set(['门前清', '不求人', '非门清自摸和', '天和', '地和', '人和']);
+      const excluded = new Set(['门前清', '门清自摸', '非门清自摸', '天和', '地和', '人和']);
       const kept = fans.filter(f => !excluded.has(f.name));
       const entry = FANS_DATA?.find(f => f.name === specialFan);
       kept.unshift({ fan: entry?.fan ?? 88, count: 1, value: entry?.fan ?? 88, name: specialFan });
@@ -693,7 +693,7 @@
   //   路径B（顺子对）：WASM 以33332解析且检测到一般高×2
   //                    → 直接移除被二杯口吸收的番，插入二杯口
   //   路径C（一色双龙会）：结构本身即二杯口（123×2+789×2+5对，同色）
-  //                    → 移除门前清，插入二杯口；自摸时的不求人保留不动
+  //                    → 移除门前清，插入二杯口；自摸时的门清自摸保留不动
   function detectErBeiKou(result) {
     if (S.melds.length > 0) return result;
     if (result.fans.some(f => f.name === '一色双龙会')) return detectErBeiKouYiSe(result);
@@ -769,7 +769,7 @@
 
     // 过滤：被二杯口吸收的番 + 因明吃产生的多余番
     // 注意：喜相逢、平和不过滤——均可与二杯口复合
-    const drop = new Set(['一般高', '非门清自摸和', '自摸', '门前清', '不求人', '无番和']);
+    const drop = new Set(['一般高', '非门清自摸', '自摸', '门前清', '门清自摸', '无番和']);
     const fans = combo.fans.filter(f => !drop.has(f.name));
 
 
@@ -777,13 +777,13 @@
     const erbEntry = FANS_DATA?.find(f => f.name === '二杯口');
     fans.unshift({ fan: erbEntry?.fan ?? 32, count: 1, value: erbEntry?.fan ?? 32, name: '二杯口' });
 
-    // 自摸时补不求人；二杯口必然门清，但荣和时门前清不单独计番
-    if (S.selfDrawn) fans.push({ fan: 2, count: 1, value: 2, name: '不求人' });
+    // 自摸时补门清自摸；二杯口必然门清，但荣和时门前清不单独计番
+    if (S.selfDrawn) fans.push({ fan: 2, count: 1, value: 2, name: '门清自摸' });
 
     return { ...result, fans };
   }
 
-  // 路径C：一色双龙会 → 结构即二杯口，移除门前清，插入二杯口；不求人保留
+  // 路径C：一色双龙会 → 结构即二杯口，移除门前清，插入二杯口；门清自摸保留
   function detectErBeiKouYiSe(result) {
     const fans = result.fans.filter(f => f.name !== '门前清');
     const erbEntry = FANS_DATA?.find(f => f.name === '二杯口');
