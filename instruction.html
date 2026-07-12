@@ -784,7 +784,7 @@
           if (!t) return;
           t.textContent = grid.classList.contains('show-minor')
             ? '收起占比 ≤2% 的番型'
-            : `展开更多（${t.dataset.count} 个占比 ≤2%）`;
+            : '展开更多（占比 ≤2%）';
         }
         let toggle = document.getElementById('common-hands-toggle');
         if (minorCount > 0) {
@@ -795,7 +795,6 @@
             toggle.addEventListener('click', () => { grid.classList.toggle('show-minor'); refreshToggle(); });
             grid.parentNode.insertBefore(toggle, grid.nextSibling);
           }
-          toggle.dataset.count = minorCount;
           toggle.hidden = false;
           refreshToggle();
         } else if (toggle) {
