@@ -245,6 +245,16 @@
   <script src="data/fans.js?v=2"></script>
   <script src="data/instruction.js"></script>
   <script>
+    // 常见牌型卡片的简介覆盖（按番名，仅此处生效，不改 fans.js）
+    const COMMON_HAND_DESC = {
+      '立直': '门清状态下，横摆本次舍牌，宣布听牌立直。详见本页面<a href="#s3" style="color:var(--accent);">「3. 吃、碰、杠」</a>',
+    };
+    function applyCommonHandDesc(el, name, fallback) {
+      const ov = COMMON_HAND_DESC[name];
+      if (ov != null) el.innerHTML = ov;
+      else el.textContent = fallback || '';
+    }
+
     // ── 牌图片辅助 ──────────────────────────────────────
     const TILE_LABELS = {
       '1m':'一万','2m':'二万','3m':'三万','4m':'四万','5m':'五万',
@@ -506,7 +516,7 @@
 
             const desc = document.createElement('div');
             desc.className = 'common-hand-desc';
-            desc.textContent = f.desc;
+            applyCommonHandDesc(desc, f.name, f.desc);
 
             card.appendChild(header);
             card.appendChild(desc);
@@ -724,7 +734,7 @@
           if (f) card.dataset.fanTier = f.fan;   // 占比进度条用：番数档 → 背景色
           const desc = document.createElement('div');
           desc.className = 'common-hand-desc';
-          desc.textContent = f?.desc ?? '';
+          applyCommonHandDesc(desc, name, f?.desc ?? '');
           card.appendChild(desc);
           const tileStr = f?.example ?? '';
           if (tileStr) {
