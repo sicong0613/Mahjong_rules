@@ -245,6 +245,9 @@
   <script src="data/fans.js?v=2"></script>
   <script src="data/instruction.js"></script>
   <script>
+    // 常见牌型里按番名排除、不显示的番种（不影响记录）
+    const COMMON_HANDS_HIDE = new Set(['宝牌']);
+
     // 常见牌型卡片的简介覆盖（按番名，仅此处生效，不改 fans.js）
     const COMMON_HAND_DESC = {
       '立直': '门清状态下，横摆本次舍牌，宣布听牌立直。详见本页面<a href="#s3" style="color:var(--accent);">「3. 吃、碰、杠」</a>',
@@ -493,6 +496,7 @@
             const f = FANS_DATA.find(x => x.id === item.id);
             if (!f) return;
             if (f.fan === 1) return;   // 不显示一番番型（不影响记录）
+            if (COMMON_HANDS_HIDE.has(f.name)) return;
 
             const card = document.createElement('div');
             card.className = 'common-hand-card';
@@ -716,6 +720,7 @@
           if (!count || existing.has(name)) return;
           const f = FANS_DATA.find(x => x.name === name);
           if (f && f.fan === 1) return;   // 不显示一番番型（不影响记录）
+          if (COMMON_HANDS_HIDE.has(name)) return;
           const card = document.createElement('div');
           card.className = 'common-hand-card';
           card.dataset.fanName = name;
@@ -753,7 +758,8 @@
         // 只保留有上报数据（count > 0）的番种；额外排除一番番型（不显示，不影响记录）
         let shown = 0;
         grid.querySelectorAll('.common-hand-card').forEach(card => {
-          const has = cardCount(card) > 0 && card.dataset.fanTier !== '1';
+          const has = cardCount(card) > 0 && card.dataset.fanTier !== '1'
+                      && !COMMON_HANDS_HIDE.has(card.dataset.fanName);
           card.hidden = !has;
           if (has) shown++;
         });
