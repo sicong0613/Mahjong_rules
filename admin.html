@@ -39,6 +39,8 @@
       border-radius: 4px; padding: 1px 6px; margin: 1px 2px; white-space: nowrap; }
     .tiles { display: flex; flex-wrap: wrap; gap: 1px; align-items: center; min-width: 200px; }
     .tiles img { width: 22px; height: 29px; object-fit: contain; }
+    /* 白板 SVG 为空白，给白底 + 柔和内描边，使其在任何背景上都显示为一张空白牌 */
+    .tiles img.haku { background: #fff; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
     .tiles .win { outline: 2px solid var(--accent); border-radius: 3px; }
     .tiles-gap { display: inline-block; width: 12px; flex: 0 0 12px; }
     .tiles .code { font-size: .72rem; color: var(--text-muted); margin-right: 3px; }
@@ -151,7 +153,8 @@
         const img = document.createElement('img');
         img.src = `img/tiles/${code}.svg`;
         img.alt = code; img.title = code;
-        if (isWin) img.className = 'win';
+        if (isWin) img.classList.add('win');
+        if (code === 'B') img.classList.add('haku');   // 白板 SVG 为空，加白底才可见
         img.onerror = () => img.replaceWith(Object.assign(document.createElement('span'),
           { className: 'code', textContent: code }));
         box.appendChild(img);
