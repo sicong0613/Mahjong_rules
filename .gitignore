@@ -4,6 +4,8 @@ CUSTOM_RULES.md
 data/fans2points.md
 CHANGELOG.md
 
+worker/fan_example/output*.json
+
 #system settings
 .claude/
 .vscode/
