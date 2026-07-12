@@ -570,7 +570,7 @@
       }
     }
 
-    // 村规2：天和 / 地和 / 人和（手动勾选，排斥门前清/门清自摸和）
+    // 村规2：天和 / 地和 / 人和（手动勾选，排斥门前清/门清自摸/非门清自摸）
     const specialFan = S.fan_tian_he ? '天和' : S.fan_di_he ? '地和' : S.fan_ren_he ? '人和' : null;
     if (specialFan) {
       const excluded = new Set(['门前清', '门清自摸', '非门清自摸', '天和', '地和', '人和']);
