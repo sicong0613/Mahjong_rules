@@ -151,12 +151,17 @@ const Calculator = (() => {
     }
 
     // ─── 番种升格合并 ────────────────────────────────────────────────────────
-    // 大七星：七对子 + 字一色 → 大七星（88番）
-    // 注意：此处在 WASM_NAME_MAP 之前，WASM 原始名为「七对」，故两种写法都匹配
+    // 大七星：字一色的七对子，且七种字牌各恰好两张 → 大七星（88番）
+    // 注意：此处在 WASM_NAME_MAP 之前，WASM 原始名为「七对」，故两种写法都匹配。
+    // 仅「七对 + 字一色」还不够——龙七对可能缺字牌，必须七种字牌齐全才升格，
+    // 否则仍输出七对子 + 字一色。
     {
       const qiIdx = fans.findIndex(f => f.name === '七对' || f.name === '七对子');
       const ziIdx = fans.findIndex(f => f.name === '字一色');
-      if (qiIdx !== -1 && ziIdx !== -1) {
+      const HONORS_7 = [0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47]; // 东南西北中发白
+      const present  = new Set([...standing, winTile]);
+      const allSevenHonors = HONORS_7.every(h => present.has(h));
+      if (qiIdx !== -1 && ziIdx !== -1 && allSevenHonors) {
         const [hi, lo] = qiIdx > ziIdx ? [qiIdx, ziIdx] : [ziIdx, qiIdx];
         fans.splice(hi, 1);
         fans.splice(lo, 1);
