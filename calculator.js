@@ -152,8 +152,9 @@ const Calculator = (() => {
 
     // ─── 番种升格合并 ────────────────────────────────────────────────────────
     // 大七星：七对子 + 字一色 → 大七星（88番）
+    // 注意：此处在 WASM_NAME_MAP 之前，WASM 原始名为「七对」，故两种写法都匹配
     {
-      const qiIdx = fans.findIndex(f => f.name === '七对子');
+      const qiIdx = fans.findIndex(f => f.name === '七对' || f.name === '七对子');
       const ziIdx = fans.findIndex(f => f.name === '字一色');
       if (qiIdx !== -1 && ziIdx !== -1) {
         const [hi, lo] = qiIdx > ziIdx ? [qiIdx, ziIdx] : [ziIdx, qiIdx];
