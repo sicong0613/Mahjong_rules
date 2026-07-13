@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>拍照识别（测试）— 麻将计番</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { padding: 18px 14px 60px; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; margin-bottom: 4px; }
+    .sub { color: var(--text-muted); font-size: .82rem; margin-bottom: 16px; }
+    .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    input[type=file] { font-size: .85rem; }
+    .msg { font-size: .85rem; margin: 8px 0; min-height: 1.2em; }
+    .msg.err { color: #c0392b; }
+    #canvas { max-width: 100%; border: 1px solid var(--border); border-radius: 8px; display: block; margin: 8px 0; }
+    #summary { font-size: .9rem; margin: 10px 0; font-family: monospace; word-break: break-all; }
+    .rtiles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .rtile { display: flex; flex-direction: column; align-items: center; }
+    .rtile img { width: 34px; height: 45px; object-fit: contain; border-radius: 3px; }
+    .rtile img.haku { background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+    .rtile .cap { font-size: .68rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <h1>拍照识别（测试页）</h1>
+  <p class="sub">选一张手牌照片，识别后按从左到右排序、映射成牌码。此页仅用于验证识别效果，
+    尚未接入计番器。识别走 <code>/api/recognize</code> 代理（密钥在 Worker，前端不暴露）。</p>
+
+  <div class="bar">
+    <input id="file" type="file" accept="image/*">
+  </div>
+
+  <div id="msg" class="msg"></div>
+  <canvas id="canvas" hidden></canvas>
+  <div id="summary"></div>
+  <div id="tiles" class="rtiles"></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const MAX_SIDE = 1600;                       // 上传前最长边缩到此值
+    const HONOR = { '1z':'E', '2z':'S', '3z':'W', '4z':'N', '5z':'B', '6z':'F', '7z':'Z' };
+    // 模型类名 → 计番器牌码；数牌与赤五同名，字牌查表，其余(如 0z)忽略
+    const classToCode = c => HONOR[c] || (/^[0-9][mps]$/.test(c) ? c : null);
+
+    function status(t, err) { const m = $('msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); }
+
+    function loadImage(file) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = rej;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    $('file').addEventListener('change', async e => {
+      const file = e.target.files[0]; e.target.value = '';
+      if (!file) return;
+      $('tiles').innerHTML = ''; $('summary').textContent = '';
+      status('读取图片…');
+      let img;
+      try { img = await loadImage(file); } catch { status('无法读取该图片', true); return; }
+
+      // 缩放到最长边 MAX_SIDE，画到 canvas
+      const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = $('canvas'); canvas.width = w; canvas.height = h; canvas.hidden = false;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const b64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+      status('识别中…');
+      try {
+        const res  = await fetch('/api/recognize', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: b64 });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data) { status('识别失败：' + (data?.error || ('HTTP ' + res.status)), true); return; }
+        render(data, ctx);
+      } catch (err) { status('网络错误：' + err.message, true); }
+    });
+
+    function render(data, ctx) {
+      const preds = (data.predictions || []).slice().sort((a, b) => a.x - b.x);
+
+      // 在照片上画框
+      ctx.lineWidth = 2; ctx.strokeStyle = '#e23b3b';
+      ctx.font = '13px sans-serif'; ctx.textBaseline = 'bottom';
+      for (const p of preds) {
+        const x = p.x - p.width / 2, y = p.y - p.height / 2;
+        ctx.strokeRect(x, y, p.width, p.height);
+        ctx.fillStyle = '#e23b3b';
+        ctx.fillText(p.class, x + 1, y - 1);
+      }
+
+      // 列出映射后的牌
+      const box = $('tiles'); box.innerHTML = '';
+      const codes = [], unmapped = [];
+      for (const p of preds) {
+        const code = classToCode(p.class);
+        if (!code) { unmapped.push(p.class); continue; }
+        codes.push(code);
+        const d = document.createElement('div'); d.className = 'rtile';
+        const im = document.createElement('img'); im.src = `img/tiles/${code}.svg`; im.alt = code;
+        if (code === 'B') im.classList.add('haku');
+        const cap = document.createElement('div'); cap.className = 'cap';
+        cap.textContent = `${code} ${Math.round((p.confidence || 0) * 100)}%`;
+        d.append(im, cap); box.appendChild(d);
+      }
+      $('summary').textContent =
+        `识别到 ${codes.length} 张：${codes.join(' ')}` +
+        (unmapped.length ? `　（未映射类：${[...new Set(unmapped)].join(', ')}）` : '');
+      status('');
+    }
+  </script>
+</body>
+</html>
