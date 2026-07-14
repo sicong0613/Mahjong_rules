@@ -794,13 +794,13 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 #hc-riichi-type:disabled { opacity: 0.45; cursor: default; }
 
 /* ── 计算按钮 ── */
-.hc-calc-row { display: flex; justify-content: center; align-items: stretch; gap: 6px; padding: 4px 0; max-width: 326px; margin: 0 auto; }
+.hc-calc-row { display: flex; justify-content: center; align-items: stretch; gap: 6px; padding: 4px 0; max-width: 376px; margin: 0 auto; }
 .hc-calc-btn {
   flex: 1;
-  padding: 12px;
+  padding: 12px 6px;
   font-size: 1rem;
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .04em;
   background: var(--accent);
   color: #fff;
   border: none;
@@ -979,11 +979,11 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 
 /* ── 拍照识别 ── */
 .hc-recog-btn {
-  margin-left: auto; font-size: .72rem; padding: 2px 8px;
-  border: 1px solid var(--accent); color: var(--accent); background: transparent;
-  border-radius: 12px; cursor: pointer;
+  flex-shrink: 0; width: 44px; font-size: 1.15rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.hc-recog-btn:hover { background: var(--accent); color: #fff; }
+.hc-recog-btn:hover { background: var(--border); }
 .hc-recog-overlay {
   position: fixed; inset: 0; z-index: 800; background: rgba(0,0,0,.5);
   display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: 16px;
@@ -991,7 +991,7 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 .hc-recog-overlay.hidden { display: none; }
 .hc-recog-box {
   background: var(--surface); color: inherit; border-radius: 12px;
-  width: min(96vw, 640px); margin: auto; padding: 14px 16px 18px;
+  width: min(96vw, 640px); margin: 0 auto; padding: 14px 16px 18px;
   box-shadow: 0 10px 40px rgba(0,0,0,.35);
 }
 .hc-recog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }

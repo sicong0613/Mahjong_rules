@@ -1438,7 +1438,7 @@
     function enterDraw() { if (!img) return; mode = 'draw'; canvas.classList.add('drawing'); roiBtn.classList.add('active'); roiBtn.textContent = '完成框选'; status('在图上拖一个矩形框住你的手牌'); }
     function exitDraw()  { mode = 'view'; draft = null; start = null; canvas.classList.remove('drawing'); roiBtn.classList.remove('active'); roiBtn.textContent = roi ? '重新框选' : '框选手牌区域'; }
     roiBtn.onclick  = () => { mode === 'draw' ? exitDraw() : enterDraw(); };
-    clearBtn.onclick = () => { roi = null; clearBtn.hidden = true; roiBtn.textContent = '框选手牌区域'; redraw(); };
+    clearBtn.onclick = () => { roi = null; clearBtn.hidden = true; roiBtn.textContent = '框选手牌区域'; redrawAll(); };
 
     fileEl.addEventListener('change', async e => {
       const file = e.target.files[0]; e.target.value = '';
@@ -1459,26 +1459,29 @@
         const data = await res.json().catch(() => null);
         if (!res.ok || !data) { status('识别失败：' + (data?.error || ('HTTP ' + res.status)), true); return; }
         preds = data.predictions || [];
-        roiBtn.hidden = false; roiBtn.textContent = '框选手牌区域';
-        status(`识别到 ${preds.length} 个框；点「框选手牌区域」框住你的手牌。`);
-        redraw();
+        roiBtn.hidden = false;
+        redrawAll();
+        enterDraw();   // 识别后直接进入框选，省掉一次点击
       } catch (err) { status('网络错误：' + err.message, true); }
     });
 
     function toCanvas(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) }; }
     canvas.addEventListener('pointerdown', e => { if (mode !== 'draw') return; canvas.setPointerCapture(e.pointerId); start = toCanvas(e); draft = { x0: start.x, y0: start.y, x1: start.x, y1: start.y }; });
-    canvas.addEventListener('pointermove', e => { if (mode !== 'draw' || !start) return; const p = toCanvas(e); draft = { x0: Math.min(start.x, p.x), y0: Math.min(start.y, p.y), x1: Math.max(start.x, p.x), y1: Math.max(start.y, p.y) }; redraw(); });
-    canvas.addEventListener('pointerup', () => { if (mode !== 'draw' || !start) return; const d = draft; if (d && d.x1 - d.x0 >= 10 && d.y1 - d.y0 >= 10) { roi = d; clearBtn.hidden = false; } exitDraw(); redraw(); });
+    canvas.addEventListener('pointermove', e => { if (mode !== 'draw' || !start) return; const p = toCanvas(e); draft = { x0: Math.min(start.x, p.x), y0: Math.min(start.y, p.y), x1: Math.max(start.x, p.x), y1: Math.max(start.y, p.y) }; drawCanvas(); });
+    canvas.addEventListener('pointerup', () => { if (mode !== 'draw' || !start) return; const d = draft; if (d && d.x1 - d.x0 >= 10 && d.y1 - d.y0 >= 10) { roi = d; clearBtn.hidden = false; } exitDraw(); redrawAll(); });
 
-    function redraw() {
+    // 画布：图 + 检测框 + ROI（拖动时只重画这个，下方列表不动，避免布局位移）
+    function drawCanvas() {
       if (!img) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const LW = Math.max(3, canvas.width / 130), FS = Math.max(12, Math.round(canvas.width / 55));
+      const LW = Math.max(3, canvas.width / 130);
       ctx.lineWidth = LW * 0.7;
       for (const p of preds) { ctx.strokeStyle = inRoi(p) ? '#e23b3b' : 'rgba(120,120,120,.4)'; ctx.strokeRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height); }
       const r = roiNow();
       if (r) { ctx.fillStyle = 'rgba(21,101,192,.14)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.lineWidth = LW; ctx.strokeStyle = '#1565c0'; ctx.setLineDash([LW * 2, LW]); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.setLineDash([]); }
-
+    }
+    // 列表：框内牌码（只在放手/清除后更新，不随拖动实时变）
+    function renderList() {
       const kept = preds.filter(inRoi).sort((a, b) => a.x - b.x);
       tilesEl.innerHTML = ''; keptCodes = []; const unmapped = [];
       for (const p of kept) {
@@ -1494,6 +1497,7 @@
         (unmapped.length ? `（未映射: ${[...new Set(unmapped)].join(', ')}）` : '');
       fillBtn.disabled = keptCodes.length === 0;
     }
+    const redrawAll = () => { drawCanvas(); renderList(); };
 
     fillBtn.addEventListener('click', () => {
       const tiles = keptCodes.map(recogSvgToTile).filter(Boolean);
