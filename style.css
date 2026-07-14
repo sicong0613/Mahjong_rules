@@ -977,6 +977,44 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 }
 .hc-modal-ok { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+/* ── 拍照识别 ── */
+.hc-recog-btn {
+  margin-left: auto; font-size: .72rem; padding: 2px 8px;
+  border: 1px solid var(--accent); color: var(--accent); background: transparent;
+  border-radius: 12px; cursor: pointer;
+}
+.hc-recog-btn:hover { background: var(--accent); color: #fff; }
+.hc-recog-overlay {
+  position: fixed; inset: 0; z-index: 800; background: rgba(0,0,0,.5);
+  display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: 16px;
+}
+.hc-recog-overlay.hidden { display: none; }
+.hc-recog-box {
+  background: var(--surface); color: inherit; border-radius: 12px;
+  width: min(96vw, 640px); margin: auto; padding: 14px 16px 18px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.35);
+}
+.hc-recog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.hc-recog-head strong { font-size: 1rem; }
+.hc-recog-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.hc-recog-mini {
+  font-size: .78rem; padding: 4px 10px; border: 1px solid var(--accent); color: var(--accent);
+  background: transparent; border-radius: 6px; cursor: pointer;
+}
+.hc-recog-mini.active { background: var(--accent); color: #fff; }
+.hc-recog-hint { font-size: .76rem; color: var(--text-muted); margin: 4px 0 8px; line-height: 1.5; }
+.hc-recog-msg { font-size: .82rem; margin: 6px 0; min-height: 1.1em; }
+.hc-recog-msg.err { color: #c0392b; }
+#hc-recog-canvas { max-width: 100%; border: 1px solid var(--border); border-radius: 8px; display: block; margin: 6px 0; touch-action: pan-y; }
+#hc-recog-canvas.drawing { touch-action: none; cursor: crosshair; box-shadow: 0 0 0 3px var(--accent); }
+.hc-recog-summary { font-size: .85rem; font-family: monospace; word-break: break-all; margin: 8px 0; }
+.hc-recog-tiles { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.hc-recog-tiles .rt { display: flex; flex-direction: column; align-items: center; }
+.hc-recog-tiles .rt img { width: 30px; height: 40px; object-fit: contain; border-radius: 3px; }
+.hc-recog-tiles .rt img.haku { background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.hc-recog-tiles .rt span { font-size: .64rem; color: var(--text-muted); margin-top: 2px; }
+.hc-recog-actions { display: flex; justify-content: flex-end; }
+
 /* 流局满贯：牌区与键盘区锁定 */
 .hc-tiles-locked #hc-standing-area,
 .hc-tiles-locked #hc-win-area,

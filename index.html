@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="国标麻将（含村规）番种速查与计番工具">
   <title>麻将番种速查</title>
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -58,7 +58,8 @@
 
     <div class="hc-content">
       <div class="hc-section">
-        <div class="hc-section-label"><span data-i18n="立牌">立牌</span> <span id="hc-standing-count">0/13</span></div>
+        <div class="hc-section-label"><span data-i18n="立牌">立牌</span> <span id="hc-standing-count">0/13</span>
+          <button id="hc-recognize-btn" class="hc-recog-btn" title="拍照识别，自动填入立牌">📷 识别</button></div>
         <div id="hc-standing-area" class="hc-tile-row"></div>
       </div>
 
@@ -151,6 +152,29 @@
       </div>
       <div id="hc-picker" class="hc-picker"></div>
     </div>
+
+    <!-- 拍照识别浮层 -->
+    <div id="hc-recog-modal" class="hc-recog-overlay hidden">
+      <div class="hc-recog-box">
+        <div class="hc-recog-head">
+          <strong>拍照识别</strong>
+          <button id="hc-recog-close" class="hc-btn-ghost">✕</button>
+        </div>
+        <div class="hc-recog-bar">
+          <input id="hc-recog-file" type="file" accept="image/*">
+          <button id="hc-recog-roi" class="hc-recog-mini" hidden>框选手牌区域</button>
+          <button id="hc-recog-clear" class="hc-recog-mini" hidden>清除框选</button>
+        </div>
+        <p class="hc-recog-hint">上传<strong>完整照片</strong>后，点「框选手牌区域」拖一个矩形框住你的手牌，只保留框内的牌。</p>
+        <div id="hc-recog-msg" class="hc-recog-msg"></div>
+        <canvas id="hc-recog-canvas" hidden></canvas>
+        <div id="hc-recog-summary" class="hc-recog-summary"></div>
+        <div id="hc-recog-tiles" class="hc-recog-tiles"></div>
+        <div class="hc-recog-actions">
+          <button id="hc-recog-fill" class="hc-calc-btn" disabled>填入立牌</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <footer id="site-footer">
@@ -163,7 +187,7 @@
   <script src="data/wasm_name_map.js?v=3"></script>
   <script src="data/fan_calculator.js?v=3"></script>
   <script src="calculator.js?v=3"></script>
-  <script src="calc-ui.js?v=3"></script>
+  <script src="calc-ui.js?v=4"></script>
   <script src="script.js?v=3"></script>
 </body>
 </html>

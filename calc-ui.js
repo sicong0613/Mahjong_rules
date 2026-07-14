@@ -1390,6 +1390,126 @@
     document.getElementById('hc-prevalent').addEventListener('change',  e => { S.prevalentWind = +e.target.value; });
     document.getElementById('hc-seat').addEventListener('change',       e => { S.seatWind      = +e.target.value; });
     document.getElementById('hc-flowers').addEventListener('change',    e => { S.flowers       = +e.target.value; });
+    setupRecognizer();
+  }
+
+  // ─── 拍照识别（浮层，识别结果填入立牌区）─────────────────────
+  const RECOG_CLASS_HONOR = { '1z':'E', '2z':'S', '3z':'W', '4z':'N', '5z':'B', '6z':'F', '7z':'Z' };
+  const RECOG_SVG_HONOR   = { E: 0x41, S: 0x42, W: 0x43, N: 0x44, Z: 0x45, F: 0x46, B: 0x47 };
+  const recogClassToSvg = c => RECOG_CLASS_HONOR[c] || (/^[0-9][mps]$/.test(c) ? c : null);
+  function recogSvgToTile(str) {
+    if (RECOG_SVG_HONOR[str] != null) return { code: RECOG_SVG_HONOR[str], isRed: false };
+    const m = /^([0-9])([mps])$/.exec(str); if (!m) return null;
+    const suit = { m: 1, s: 2, p: 3 }[m[2]], rank = +m[1];
+    return rank === 0 ? { code: (suit << 4) | 5, isRed: true } : { code: (suit << 4) | rank, isRed: false };
+  }
+
+  function setupRecognizer() {
+    const modal = document.getElementById('hc-recog-modal');
+    if (!modal) return;
+    const canvas  = document.getElementById('hc-recog-canvas');
+    const ctx     = canvas.getContext('2d');
+    const fileEl  = document.getElementById('hc-recog-file');
+    const roiBtn  = document.getElementById('hc-recog-roi');
+    const clearBtn = document.getElementById('hc-recog-clear');
+    const fillBtn = document.getElementById('hc-recog-fill');
+    const msgEl   = document.getElementById('hc-recog-msg');
+    const sumEl   = document.getElementById('hc-recog-summary');
+    const tilesEl = document.getElementById('hc-recog-tiles');
+    const MAX_SIDE = 1600;
+
+    let img = null, preds = [], roi = null, draft = null, mode = 'view', start = null, keptCodes = [];
+    const status = (t, e) => { msgEl.textContent = t; msgEl.className = 'hc-recog-msg' + (e ? ' err' : ''); };
+    const roiNow = () => draft || roi;
+    const inRoi = p => { const r = roiNow(); return !r || (p.x >= r.x0 && p.x <= r.x1 && p.y >= r.y0 && p.y <= r.y1); };
+    const loadImage = f => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
+
+    function openModal() {
+      preds = []; roi = null; draft = null; keptCodes = []; exitDraw();
+      canvas.hidden = true; roiBtn.hidden = true; clearBtn.hidden = true; fillBtn.disabled = true;
+      tilesEl.innerHTML = ''; sumEl.textContent = ''; status('选择或拍一张手牌照片');
+      modal.classList.remove('hidden');
+    }
+    const closeModal = () => modal.classList.add('hidden');
+    document.getElementById('hc-recognize-btn').addEventListener('click', openModal);
+    document.getElementById('hc-recog-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    function enterDraw() { if (!img) return; mode = 'draw'; canvas.classList.add('drawing'); roiBtn.classList.add('active'); roiBtn.textContent = '完成框选'; status('在图上拖一个矩形框住你的手牌'); }
+    function exitDraw()  { mode = 'view'; draft = null; start = null; canvas.classList.remove('drawing'); roiBtn.classList.remove('active'); roiBtn.textContent = roi ? '重新框选' : '框选手牌区域'; }
+    roiBtn.onclick  = () => { mode === 'draw' ? exitDraw() : enterDraw(); };
+    clearBtn.onclick = () => { roi = null; clearBtn.hidden = true; roiBtn.textContent = '框选手牌区域'; redraw(); };
+
+    fileEl.addEventListener('change', async e => {
+      const file = e.target.files[0]; e.target.value = '';
+      if (!file) return;
+      preds = []; roi = null; draft = null; keptCodes = []; exitDraw();
+      roiBtn.hidden = true; clearBtn.hidden = true; tilesEl.innerHTML = ''; sumEl.textContent = ''; fillBtn.disabled = true;
+      status('读取图片…');
+      let im; try { im = await loadImage(file); } catch { status('无法读取该图片', true); return; }
+      const scale = Math.min(1, MAX_SIDE / Math.max(im.width, im.height));
+      canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale); canvas.hidden = false;
+      ctx.drawImage(im, 0, 0, canvas.width, canvas.height);
+      img = new Image(); img.src = canvas.toDataURL('image/jpeg', 0.85);
+      const b64 = img.src.split(',')[1];
+      await new Promise(r => { img.onload = r; });
+      status('识别中…（上传完整图片）');
+      try {
+        const res = await fetch('/api/recognize', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: b64 });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data) { status('识别失败：' + (data?.error || ('HTTP ' + res.status)), true); return; }
+        preds = data.predictions || [];
+        roiBtn.hidden = false; roiBtn.textContent = '框选手牌区域';
+        status(`识别到 ${preds.length} 个框；点「框选手牌区域」框住你的手牌。`);
+        redraw();
+      } catch (err) { status('网络错误：' + err.message, true); }
+    });
+
+    function toCanvas(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) }; }
+    canvas.addEventListener('pointerdown', e => { if (mode !== 'draw') return; canvas.setPointerCapture(e.pointerId); start = toCanvas(e); draft = { x0: start.x, y0: start.y, x1: start.x, y1: start.y }; });
+    canvas.addEventListener('pointermove', e => { if (mode !== 'draw' || !start) return; const p = toCanvas(e); draft = { x0: Math.min(start.x, p.x), y0: Math.min(start.y, p.y), x1: Math.max(start.x, p.x), y1: Math.max(start.y, p.y) }; redraw(); });
+    canvas.addEventListener('pointerup', () => { if (mode !== 'draw' || !start) return; const d = draft; if (d && d.x1 - d.x0 >= 10 && d.y1 - d.y0 >= 10) { roi = d; clearBtn.hidden = false; } exitDraw(); redraw(); });
+
+    function redraw() {
+      if (!img) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const LW = Math.max(3, canvas.width / 130), FS = Math.max(12, Math.round(canvas.width / 55));
+      ctx.lineWidth = LW * 0.7;
+      for (const p of preds) { ctx.strokeStyle = inRoi(p) ? '#e23b3b' : 'rgba(120,120,120,.4)'; ctx.strokeRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height); }
+      const r = roiNow();
+      if (r) { ctx.fillStyle = 'rgba(21,101,192,.14)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.lineWidth = LW; ctx.strokeStyle = '#1565c0'; ctx.setLineDash([LW * 2, LW]); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.setLineDash([]); }
+
+      const kept = preds.filter(inRoi).sort((a, b) => a.x - b.x);
+      tilesEl.innerHTML = ''; keptCodes = []; const unmapped = [];
+      for (const p of kept) {
+        const code = recogClassToSvg(p.class);
+        if (!code) { unmapped.push(p.class); continue; }
+        keptCodes.push(code);
+        const d = el('div', 'rt');
+        const im = document.createElement('img'); im.src = `img/tiles/${code}.svg`; im.alt = code; if (code === 'B') im.classList.add('haku');
+        const cap = document.createElement('span'); cap.textContent = `${code} ${Math.round((p.confidence || 0) * 100)}%`;
+        d.append(im, cap); tilesEl.appendChild(d);
+      }
+      sumEl.textContent = `${roi ? '框内' : '全部'} ${keptCodes.length} 张：${keptCodes.join(' ')}` +
+        (unmapped.length ? `（未映射: ${[...new Set(unmapped)].join(', ')}）` : '');
+      fillBtn.disabled = keptCodes.length === 0;
+    }
+
+    fillBtn.addEventListener('click', () => {
+      const tiles = keptCodes.map(recogSvgToTile).filter(Boolean);
+      if (tiles.length === 0) return;
+      const MAX = 13;
+      S.standing = tiles.slice(0, MAX); S.winTile = null; S.melds = []; S.buffer = [];
+      let extra = 0;
+      if (tiles.length > MAX) { S.winTile = tiles[MAX]; extra = tiles.length - MAX - 1; }
+      _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
+      render();
+      dom.result.innerHTML = ''; dom.result.classList.add('hidden');
+      closeModal();
+      showToast(tiles.length > MAX
+        ? `已填入立牌 13 张 + 和牌张 1 张（末张，请核对）` + (extra > 0 ? `，超出 ${extra} 张未填` : '')
+        : `已填入立牌 ${tiles.length} 张，请指定和牌张`);
+    });
   }
 
   document.addEventListener('DOMContentLoaded', init);
