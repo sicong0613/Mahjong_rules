@@ -997,6 +997,8 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 .hc-recog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .hc-recog-head strong { font-size: 1rem; }
 .hc-recog-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+/* 文件选择框独占一行，「重新框选」「清除框选」并排到下一行 */
+.hc-recog-bar input[type=file] { flex: 1 1 100%; min-width: 0; }
 .hc-recog-mini {
   font-size: .78rem; padding: 4px 10px; border: 1px solid var(--accent); color: var(--accent);
   background: transparent; border-radius: 6px; cursor: pointer;
