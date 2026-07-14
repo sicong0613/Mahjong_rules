@@ -13,11 +13,15 @@
     .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
     .bar button { padding: 5px 12px; border: 1px solid var(--accent); background: transparent;
       color: var(--accent); border-radius: 6px; cursor: pointer; font-size: .82rem; }
+    .bar button:disabled { opacity: .4; cursor: not-allowed; }
+    .bar button.active { background: var(--accent); color: #fff; }
     .hint { font-size: .78rem; color: var(--text-muted); margin: 4px 0 8px; }
     .msg { font-size: .85rem; margin: 8px 0; min-height: 1.2em; }
     .msg.err { color: #c0392b; }
+    /* 默认可上下滚动页面；仅在框选模式禁用触摸手势 */
     #canvas { max-width: 100%; border: 1px solid var(--border); border-radius: 8px;
-      display: block; margin: 8px 0; touch-action: none; cursor: crosshair; }
+      display: block; margin: 8px 0; touch-action: pan-y; }
+    #canvas.drawing { touch-action: none; cursor: crosshair; box-shadow: 0 0 0 3px var(--accent); }
     #summary { font-size: .9rem; margin: 10px 0; font-family: monospace; word-break: break-all; }
     .rtiles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .rtile { display: flex; flex-direction: column; align-items: center; }
@@ -33,10 +37,11 @@
 
   <div class="bar">
     <input id="file" type="file" accept="image/*">
+    <button id="roiBtn" hidden>框选手牌区域</button>
     <button id="clearRoi" hidden>清除框选</button>
   </div>
-  <p class="hint">识别用的始终是<strong>完整图片</strong>；在下方图上<strong>拖动框选</strong>你的手牌区域，
-    只会保留框内的牌（框外散牌被忽略）。可反复重框，即时生效、无需重新上传。</p>
+  <p class="hint">识别用的始终是<strong>完整图片</strong>。点「框选手牌区域」进入框选模式，在图上拖一个矩形，
+    只保留框内的牌；框选后自动退出框选模式，页面可正常滚动、不会误触。</p>
 
   <div id="msg" class="msg"></div>
   <canvas id="canvas" hidden></canvas>
@@ -46,26 +51,36 @@
   <script>
     const $ = id => document.getElementById(id);
     const canvas = $('canvas'), ctx = canvas.getContext('2d');
+    const roiBtn = $('roiBtn'), clearBtn = $('clearRoi');
     const MAX_SIDE = 1600;
     const HONOR = { '1z':'E', '2z':'S', '3z':'W', '4z':'N', '5z':'B', '6z':'F', '7z':'Z' };
     const classToCode = c => HONOR[c] || (/^[0-9][mps]$/.test(c) ? c : null);
 
     let _img = null;      // 已缩放待画的图
     let _preds = [];      // 完整图片的全部识别框（画布坐标系）
-    let _roi = null;      // {x0,y0,x1,y1} 画布坐标；null = 不过滤
-    let _drag = null;     // 拖动起点
+    let _roi = null;      // 已确定的 ROI {x0,y0,x1,y1}；null = 不过滤
+    let _draft = null;    // 正在拖动中的临时框
+    let _mode = 'view';   // 'view' | 'draw'
+    let _start = null;
 
     function status(t, err) { const m = $('msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); }
     function loadImage(file) {
       return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
     }
-    const inRoi = p => !_roi || (p.x >= _roi.x0 && p.x <= _roi.x1 && p.y >= _roi.y0 && p.y <= _roi.y1);
+    const roiNow = () => _draft || _roi;
+    const inRoi = p => { const r = roiNow(); return !r || (p.x >= r.x0 && p.x <= r.x1 && p.y >= r.y0 && p.y <= r.y1); };
+
+    function enterDraw() { if (!_img) return; _mode = 'draw'; canvas.classList.add('drawing'); roiBtn.classList.add('active'); roiBtn.textContent = '完成框选'; status('在图上拖一个矩形框住你的手牌'); }
+    function exitDraw()  { _mode = 'view'; _draft = null; _start = null; canvas.classList.remove('drawing'); roiBtn.classList.remove('active'); roiBtn.textContent = _roi ? '重新框选' : '框选手牌区域'; }
+    roiBtn.onclick  = () => { _mode === 'draw' ? exitDraw() : enterDraw(); };
+    clearBtn.onclick = () => { _roi = null; clearBtn.hidden = true; roiBtn.textContent = '框选手牌区域'; redraw(); };
 
     // ── 选图 → 缩放 → 传完整图 → 存全部框 ──
     $('file').addEventListener('change', async e => {
       const file = e.target.files[0]; e.target.value = '';
       if (!file) return;
-      _preds = []; _roi = null; $('clearRoi').hidden = true; $('tiles').innerHTML = ''; $('summary').textContent = '';
+      _preds = []; _roi = null; _draft = null; exitDraw();
+      roiBtn.hidden = true; clearBtn.hidden = true; $('tiles').innerHTML = ''; $('summary').textContent = '';
       status('读取图片…');
       let img;
       try { img = await loadImage(file); } catch { status('无法读取该图片', true); return; }
@@ -85,43 +100,50 @@
         const data = await res.json().catch(() => null);
         if (!res.ok || !data) { status('识别失败：' + (data?.error || ('HTTP ' + res.status)), true); return; }
         _preds = data.predictions || [];
-        status(`识别到 ${_preds.length} 个框；拖动框选你的手牌区域以过滤。`);
+        roiBtn.hidden = false; roiBtn.textContent = '框选手牌区域';
+        status(`识别到 ${_preds.length} 个框；点「框选手牌区域」框住你的手牌。`);
         redraw();
       } catch (err) { status('网络错误：' + err.message, true); }
     });
 
-    // ── 画布上拖动框选 ROI ──
+    // ── 框选（仅在 draw 模式生效，避免滚动误触）──
     function toCanvas(e) {
       const r = canvas.getBoundingClientRect();
       return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
     }
-    canvas.addEventListener('pointerdown', e => { if (!_img) return; canvas.setPointerCapture(e.pointerId); _drag = toCanvas(e); _roi = { x0: _drag.x, y0: _drag.y, x1: _drag.x, y1: _drag.y }; });
-    canvas.addEventListener('pointermove', e => { if (!_drag) return; const p = toCanvas(e); _roi = { x0: _drag.x, y0: _drag.y, x1: p.x, y1: p.y }; redraw(); });
+    canvas.addEventListener('pointerdown', e => { if (_mode !== 'draw') return; canvas.setPointerCapture(e.pointerId); _start = toCanvas(e); _draft = { x0: _start.x, y0: _start.y, x1: _start.x, y1: _start.y }; });
+    canvas.addEventListener('pointermove', e => { if (_mode !== 'draw' || !_start) return; const p = toCanvas(e); _draft = { x0: Math.min(_start.x, p.x), y0: Math.min(_start.y, p.y), x1: Math.max(_start.x, p.x), y1: Math.max(_start.y, p.y) }; redraw(); });
     canvas.addEventListener('pointerup', e => {
-      if (!_drag) return; _drag = null;
-      // 规范化，太小视为取消框选
-      const x0 = Math.min(_roi.x0, _roi.x1), x1 = Math.max(_roi.x0, _roi.x1);
-      const y0 = Math.min(_roi.y0, _roi.y1), y1 = Math.max(_roi.y0, _roi.y1);
-      _roi = (x1 - x0 < 10 || y1 - y0 < 10) ? null : { x0, y0, x1, y1 };
-      $('clearRoi').hidden = !_roi;
-      redraw();
+      if (_mode !== 'draw' || !_start) return;
+      const d = _draft;
+      if (d && d.x1 - d.x0 >= 10 && d.y1 - d.y0 >= 10) { _roi = d; clearBtn.hidden = false; }  // 太小视为取消，保留原 ROI
+      exitDraw(); redraw();
     });
-    $('clearRoi').onclick = () => { _roi = null; $('clearRoi').hidden = true; redraw(); };
 
-    // ── 重绘：图 + ROI + 框（框内红、框外淡灰）+ 列表 ──
+    // ── 重绘：图 + 检测框（框内红/框外淡灰）+ ROI（粗蓝、半透明填充）+ 列表 ──
     function redraw() {
       if (!_img) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(_img, 0, 0, canvas.width, canvas.height);
 
-      if (_roi) { ctx.lineWidth = 2; ctx.strokeStyle = '#1565c0'; ctx.setLineDash([6, 4]); ctx.strokeRect(_roi.x0, _roi.y0, _roi.x1 - _roi.x0, _roi.y1 - _roi.y0); ctx.setLineDash([]); }
+      const LW = Math.max(3, canvas.width / 130);          // 线宽随分辨率放大，缩放显示后仍清晰
+      const FS = Math.max(12, Math.round(canvas.width / 55));
 
-      ctx.font = '13px sans-serif'; ctx.textBaseline = 'bottom'; ctx.lineWidth = 2;
+      ctx.font = FS + 'px sans-serif'; ctx.textBaseline = 'bottom'; ctx.lineWidth = LW * 0.7;
       for (const p of _preds) {
         const keep = inRoi(p);
-        ctx.strokeStyle = keep ? '#e23b3b' : 'rgba(120,120,120,.45)';
+        ctx.strokeStyle = keep ? '#e23b3b' : 'rgba(120,120,120,.4)';
         ctx.strokeRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height);
-        if (keep) { ctx.fillStyle = '#e23b3b'; ctx.fillText(p.class, p.x - p.width / 2 + 1, p.y - p.height / 2 - 1); }
+        if (keep) { ctx.fillStyle = '#e23b3b'; ctx.fillText(p.class, p.x - p.width / 2 + 1, p.y - p.height / 2 - 2); }
+      }
+
+      const r = roiNow();
+      if (r) {
+        ctx.fillStyle = 'rgba(21,101,192,.14)';
+        ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+        ctx.lineWidth = LW; ctx.strokeStyle = '#1565c0'; ctx.setLineDash([LW * 2, LW]);
+        ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+        ctx.setLineDash([]);
       }
 
       const kept = _preds.filter(inRoi).sort((a, b) => a.x - b.x);
@@ -138,7 +160,7 @@
         cap.textContent = `${code} ${Math.round((p.confidence || 0) * 100)}%`;
         d.append(im, cap); box.appendChild(d);
       }
-      $('summary').textContent = `框内 ${codes.length} 张：${codes.join(' ')}` +
+      $('summary').textContent = `${_roi ? '框内' : '全部'} ${codes.length} 张：${codes.join(' ')}` +
         (unmapped.length ? `　（未映射类：${[...new Set(unmapped)].join(', ')}）` : '');
     }
   </script>
