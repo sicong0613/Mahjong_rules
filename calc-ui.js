@@ -1686,7 +1686,6 @@
     const roiBtn  = document.getElementById('hc-recog-roi');
     const clearBtn = document.getElementById('hc-recog-clear');
     const fillBtn  = document.getElementById('hc-recog-fill');          // 接受并填入（自动分组）
-    const fillManualBtn = document.getElementById('hc-recog-fill-manual'); // 仅填立牌（不看分组，旧逻辑）
     const msgEl   = document.getElementById('hc-recog-msg');
     const sumEl   = document.getElementById('hc-recog-summary');
     const tilesEl = document.getElementById('hc-recog-tiles');
@@ -1705,8 +1704,7 @@
 
     function openModal() {
       preds = []; roi = null; draft = null; keptCodes = []; lastOrdered = []; lastGrouping = null; predColorMap = new Map(); recogSel.clear(); exitDraw();
-      canvas.hidden = true; roiBtn.hidden = true; clearBtn.hidden = true; fillBtn.disabled = true; fillManualBtn.disabled = true;
-      tilesEl.innerHTML = ''; sumEl.textContent = ''; status('选择或拍一张手牌照片');
+      canvas.hidden = true; roiBtn.hidden = true; clearBtn.hidden = true; fillBtn.disabled = true;      tilesEl.innerHTML = ''; sumEl.textContent = ''; status('选择或拍一张手牌照片');
       modal.classList.remove('hidden');
     }
     const closeModal = () => modal.classList.add('hidden');
@@ -1723,8 +1721,7 @@
       const file = e.target.files[0]; e.target.value = '';
       if (!file) return;
       preds = []; roi = null; draft = null; keptCodes = []; lastOrdered = []; lastGrouping = null; predColorMap = new Map(); exitDraw();
-      roiBtn.hidden = true; clearBtn.hidden = true; tilesEl.innerHTML = ''; sumEl.textContent = ''; fillBtn.disabled = true; fillManualBtn.disabled = true;
-      status('读取图片…');
+      roiBtn.hidden = true; clearBtn.hidden = true; tilesEl.innerHTML = ''; sumEl.textContent = ''; fillBtn.disabled = true;      status('读取图片…');
       let im; try { im = await loadImage(file); } catch { status('无法读取该图片', true); return; }
       const scale = Math.min(1, MAX_SIDE / Math.max(im.width, im.height));
       canvas.width = Math.round(im.width * scale); canvas.height = Math.round(im.height * scale); canvas.hidden = false;
@@ -1796,6 +1793,7 @@
       // 每个副露组画一个外框（统一红色，虚线，包住组内所有牌）
       if (lastGrouping) {
         lastGrouping.groups.forEach(g => {
+          if (!g) return;
           const boxes = g.idxs.map(i => lastOrdered[i].pred).filter(inRoi);
           if (boxes.length === 0) return;
           const x0 = Math.min(...boxes.map(p => p.x - p.width / 2));
@@ -1832,7 +1830,7 @@
       };
 
       const tileToGroup = new Map();
-      lastGrouping.groups.forEach((g, gi) => g.idxs.forEach(k => tileToGroup.set(k, gi)));
+      lastGrouping.groups.forEach((g, gi) => { if (g) g.idxs.forEach(k => tileToGroup.set(k, gi)); });
 
       const rendered = new Set();
       lastOrdered.forEach((t, i) => {
@@ -1846,6 +1844,12 @@
           const groupDiv = el('div', 'rt-group rt-group-meld');
           const typeLabel = { chow: '顺', pung: '碰', kong: g.concealed ? '暗杠' : '明杠' }[g.type] || '';
           groupDiv.title = `副露组 ${gi + 1}${typeLabel ? '（' + typeLabel + '）' : ''}`;
+          // × dismiss button
+          const dismiss = document.createElement('button');
+          dismiss.className = 'rt-group-dismiss';
+          dismiss.textContent = '×';
+          dismiss.dataset.groupIdx = gi;
+          groupDiv.appendChild(dismiss);
           g.idxs.forEach(k => { rendered.add(k); groupDiv.appendChild(makeTileDiv(lastOrdered[k], k)); });
           tilesEl.appendChild(groupDiv);
         } else if (c && c.kind === 'win') {
@@ -1865,7 +1869,7 @@
         }
       });
 
-      const meldCount = lastGrouping.groups.length;
+      const meldCount = lastGrouping.groups.filter(Boolean).length;
       const winNote = lastGrouping.winIdx != null ? '已锁定和牌张'
         : (lastGrouping.winCandidates.length > 1 ? `${lastGrouping.winCandidates.length} 个候选和牌张未锁定` : '未发现和牌张标记');
       const backCount = lastOrdered.filter(t => t.isBack).length;
@@ -1875,7 +1879,6 @@
 
       const hasTiles = lastOrdered.length > 0;
       fillBtn.disabled = !hasTiles;
-      fillManualBtn.disabled = !hasTiles;
     }
 
     const redrawAll = () => { recogSel.clear(); computeGrouping(); drawCanvas(); renderTileList(); recogUpdateEditBtns(); };
@@ -1908,27 +1911,47 @@
     }
 
     // Pointer events: click/drag to select tiles in the preview list
+    // img/span have pointer-events:none in CSS, so e.target is always the .rt div
     let recogDragMode = null;
+    function recogFindRT(e) {
+      const rt = e.target.closest('[data-rt-idx]');
+      return rt ? +rt.dataset.rtIdx : null;
+    }
     tilesEl.addEventListener('pointerdown', e => {
-      const rt = e.target.closest('.rt');
-      const idx = rt && rt.dataset.rtIdx; if (idx == null) return;
-      const k = +idx;
+      const k = recogFindRT(e); if (k == null) return;
+      e.preventDefault(); // prevent text selection / scroll
       recogDragMode = recogSel.has(k) ? 'remove' : 'add';
       if (recogDragMode === 'add') recogSel.add(k); else recogSel.delete(k);
       recogUpdateEditBtns();
     });
     tilesEl.addEventListener('pointermove', e => {
-      if (!recogDragMode) return;
-      if (e.buttons !== 1 && e.pointerType !== 'touch') return;
+      if (recogDragMode == null) return;
+      e.preventDefault();
       const hit = document.elementFromPoint(e.clientX, e.clientY);
-      const rt = hit && hit.closest && hit.closest('.rt');
-      const idx = rt && rt.dataset.rtIdx; if (idx == null) return;
-      const k = +idx;
+      if (!hit) return;
+      const rt = hit.closest ? hit.closest('[data-rt-idx]') : null;
+      if (!rt) return;
+      const k = +rt.dataset.rtIdx;
       if (recogDragMode === 'add' && !recogSel.has(k))  { recogSel.add(k);    recogUpdateEditBtns(); }
       if (recogDragMode === 'remove' && recogSel.has(k)) { recogSel.delete(k); recogUpdateEditBtns(); }
     });
     tilesEl.addEventListener('pointerup',     () => { recogDragMode = null; });
     tilesEl.addEventListener('pointercancel', () => { recogDragMode = null; });
+
+    // 取消副露分组（点击 × 按钮）
+    tilesEl.addEventListener('click', e => {
+      const btn = e.target.closest('.rt-group-dismiss');
+      if (!btn) return;
+      const gi = +btn.dataset.groupIdx;
+      const g = lastGrouping.groups[gi]; if (!g) return;
+      g.idxs.forEach(k => {
+        lastGrouping.consumed[k] = null;
+        predColorMap.delete(lastOrdered[k].pred);
+      });
+      lastGrouping.groups[gi] = null; // 标记为已移除
+      recogSel.clear();
+      drawCanvas(); renderTileList(); recogUpdateEditBtns();
+    });
 
     // 设为副露
     recogSetMeldBtn?.addEventListener('click', () => {
@@ -1996,7 +2019,7 @@
     fillBtn.addEventListener('click', () => {
       if (!lastGrouping || lastOrdered.length === 0) return;
       const { consumed, groups, winIdx, winCandidates } = lastGrouping;
-      const melds = groups.map(g => groupToMeld(g, lastOrdered));
+      const melds = groups.filter(Boolean).map(g => groupToMeld(g, lastOrdered));
       let winTile = null;
       const standing = [];
       lastOrdered.forEach((t, i) => {
@@ -2021,22 +2044,6 @@
         truncNote);
     });
 
-    // 仅填立牌：不看自动分组，整体按旧逻辑填入（前 13 张立牌 + 第 14 张和牌张），供分组明显出错时兜底
-    fillManualBtn.addEventListener('click', () => {
-      const tiles = keptCodes.map(recogSvgToTile).filter(Boolean);
-      if (tiles.length === 0) return;
-      const MAX = 13;
-      S.standing = tiles.slice(0, MAX); S.winTile = null; S.melds = []; S.buffer = []; clearSelection();
-      let extra = 0;
-      if (tiles.length > MAX) { S.winTile = tiles[MAX]; extra = tiles.length - MAX - 1; }
-      _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
-      render();
-      dom.result.innerHTML = ''; dom.result.classList.add('hidden');
-      closeModal();
-      showToast(tiles.length > MAX
-        ? `已填入立牌 13 张 + 和牌张 1 张（末张，请核对）` + (extra > 0 ? `，超出 ${extra} 张未填` : '')
-        : `已填入立牌 ${tiles.length} 张，请指定和牌张`);
-    });
   }
 
   document.addEventListener('DOMContentLoaded', init);
