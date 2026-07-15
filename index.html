@@ -66,7 +66,6 @@
         <div class="hc-section-label"><span data-i18n="和牌张">和牌张</span></div>
         <div id="hc-win-area" class="hc-tile-row"></div>
         <div class="hc-select-tools">
-          <label class="hc-select-toggle"><input type="checkbox" id="hc-select-mode"> 选牌</label>
           <button id="hc-set-meld" class="hc-btn-xs" disabled title="选中的3~4张组成刻子/顺子/杠">设为副露</button>
           <button id="hc-set-win"  class="hc-btn-xs" disabled title="把选中的单张设为和牌张">和牌张</button>
           <button id="hc-del-sel"  class="hc-btn-xs hc-btn-danger" disabled title="删除选中的牌（不放回手牌）">删除</button>
@@ -177,6 +176,11 @@
         <canvas id="hc-recog-canvas" hidden></canvas>
         <div id="hc-recog-summary" class="hc-recog-summary"></div>
         <div id="hc-recog-tiles" class="hc-recog-tiles"></div>
+        <div class="hc-recog-edit-tools">
+          <button id="hc-recog-set-meld" class="hc-btn-xs" disabled>设为副露</button>
+          <button id="hc-recog-set-win"  class="hc-btn-xs" disabled>和牌张</button>
+          <button id="hc-recog-del"      class="hc-btn-xs hc-btn-danger" disabled>删除</button>
+        </div>
         <div class="hc-recog-actions">
           <button id="hc-recog-fill-manual" class="hc-recog-mini" disabled title="不看自动分组，前13张填立牌、第14张填和牌张">仅填立牌</button>
           <button id="hc-recog-fill" class="hc-calc-btn" disabled>接受并填入</button>

@@ -632,20 +632,29 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 
 /* 选牌工具：始终固定在行的最右侧，不被和牌张挤走 */
 .hc-select-tools { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-.hc-select-toggle { display: flex; align-items: center; gap: 3px; font-size: .72rem; cursor: pointer; user-select: none; }
-.hc-select-tools .hc-btn-xs {
+.hc-select-tools .hc-btn-xs,
+.hc-recog-edit-tools .hc-btn-xs {
   font-size: .7rem; padding: 2px 8px; border-radius: 5px;
   background: transparent; color: var(--accent); border: 1px solid var(--accent); cursor: pointer;
 }
-.hc-select-tools .hc-btn-xs:disabled { opacity: .35; cursor: not-allowed; }
-.hc-select-tools .hc-btn-xs:not(:disabled):hover { background: var(--accent); color: #fff; }
-.hc-select-tools .hc-btn-xs.hc-btn-danger { color: #c0392b; border-color: #c0392b; }
-.hc-select-tools .hc-btn-xs.hc-btn-danger:not(:disabled):hover { background: #c0392b; color: #fff; }
+.hc-select-tools .hc-btn-xs:disabled,
+.hc-recog-edit-tools .hc-btn-xs:disabled { opacity: .35; cursor: not-allowed; }
+.hc-select-tools .hc-btn-xs:not(:disabled):hover,
+.hc-recog-edit-tools .hc-btn-xs:not(:disabled):hover { background: var(--accent); color: #fff; }
+.hc-select-tools .hc-btn-xs.hc-btn-danger,
+.hc-recog-edit-tools .hc-btn-xs.hc-btn-danger { color: #c0392b; border-color: #c0392b; }
+.hc-select-tools .hc-btn-xs.hc-btn-danger:not(:disabled):hover,
+.hc-recog-edit-tools .hc-btn-xs.hc-btn-danger:not(:disabled):hover { background: #c0392b; color: #fff; }
 /* 选中态：图上覆一层强调色 */
 .hc-tile.hc-selected { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; box-shadow: inset 0 0 0 9999px rgba(139,26,26,.18); }
-/* 选牌模式下用手指指示可选，且禁用触摸滚动以支持滑选 */
-.hc-selecting .hc-tile { cursor: pointer; }
-.hc-selecting #hc-standing-area, .hc-selecting #hc-win-area { touch-action: none; }
+/* 立牌/和牌张始终可选 */
+.hc-tile { cursor: pointer; }
+#hc-standing-area, #hc-win-area { touch-action: none; }
+/* 识别浮窗编辑工具 */
+.hc-recog-edit-tools { display: flex; gap: 6px; margin-bottom: 8px; }
+.hc-recog-tiles .rt.rt-sel { outline: 2px solid var(--accent); outline-offset: -1px; box-shadow: inset 0 0 0 9999px rgba(139,26,26,.18); cursor: pointer; }
+.hc-recog-tiles .rt { cursor: pointer; }
+.hc-recog-tiles { touch-action: none; }
 
 /* 牌行（立牌/副露缓冲） */
 .hc-tile-row {
