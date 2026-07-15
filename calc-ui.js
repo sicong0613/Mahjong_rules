@@ -43,7 +43,7 @@
       melds: [],      // [{type, tile, tiles, concealed, promoted}]
       buffer: [],     // 副露/暗杠缓冲
       replacing: null,// {area:'standing'|'win', index} | null
-      selectMode: true,           // 选牌模式：始终为 true，点/滑立牌·和牌张 = 选中
+      selectMode: false,          // 选牌模式：勾选 checkbox 后启用
       selected: new Set(),        // 选中集合，元素为 'standing:i' 或 'win'
       selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false, qiangGang: false,
       riichi: false, riichiType: 'riichi',
@@ -473,6 +473,7 @@
   }
   function setSelectMode(on) {
     S.selectMode = on;
+    if (dom.selectCheck) dom.selectCheck.checked = on;
     if (!on) clearSelection();
     render();
   }
@@ -1374,6 +1375,7 @@
     dom.result        = document.getElementById('hc-result');
     dom.calcBtn       = document.getElementById('hc-calc-btn');
     dom.uploadBtn     = document.getElementById('hc-upload-btn');
+    dom.selectCheck   = document.getElementById('hc-select-check');
     dom.setMeldBtn    = document.getElementById('hc-set-meld');
     dom.setWinBtn     = document.getElementById('hc-set-win');
     dom.delSelBtn     = document.getElementById('hc-del-sel');
@@ -1565,6 +1567,7 @@
     document.getElementById('hc-prevalent').addEventListener('change',  e => { S.prevalentWind = +e.target.value; });
     document.getElementById('hc-seat').addEventListener('change',       e => { S.seatWind      = +e.target.value; });
     document.getElementById('hc-flowers').addEventListener('change',    e => { S.flowers       = +e.target.value; });
+    dom.selectCheck?.addEventListener('change', () => setSelectMode(dom.selectCheck.checked));
     dom.setMeldBtn?.addEventListener('click',  actionSetMeld);
     dom.setWinBtn?.addEventListener('click',   actionSetWin);
     dom.delSelBtn?.addEventListener('click',   actionDeleteSelected);
@@ -1890,6 +1893,10 @@
     const recogSel = new Set();  // 选中的 lastOrdered 索引
 
     function recogUpdateEditBtns() {
+      // Remove any selected tiles that are in meld groups (shouldn't be selectable)
+      for (const idx of [...recogSel]) {
+        if (!recogIsSelectable(idx)) recogSel.delete(idx);
+      }
       const n = recogSel.size;
       if (recogSetWinBtn)  recogSetWinBtn.disabled  = !(n === 1 && !lastOrdered[[...recogSel][0]]?.isBack);
       if (recogDelBtn)     recogDelBtn.disabled     = n === 0;
@@ -1903,7 +1910,6 @@
         }
         recogSetMeldBtn.disabled = !ok;
       }
-      // Update selection visual on rendered tiles
       tilesEl.querySelectorAll('.rt').forEach(rtEl => {
         const idx = rtEl.dataset.rtIdx;
         if (idx != null) rtEl.classList.toggle('rt-sel', recogSel.has(+idx));
@@ -1913,31 +1919,40 @@
     // Pointer events: click/drag to select tiles in the preview list
     // img/span have pointer-events:none in CSS, so e.target is always the .rt div
     let recogDragMode = null;
-    function recogFindRT(e) {
-      const rt = e.target.closest('[data-rt-idx]');
+    function recogIsSelectable(idx) {
+      const c = lastGrouping?.consumed[idx];
+      return !(c && c.kind === 'meld');
+    }
+    function recogHitIdx(e) {
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      if (!hit) return null;
+      const rt = hit.closest ? hit.closest('[data-rt-idx]') : null;
       return rt ? +rt.dataset.rtIdx : null;
     }
+    function onRecogDragMove(e) {
+      if (recogDragMode == null) return;
+      e.preventDefault();
+      const k = recogHitIdx(e);
+      if (k == null || !recogIsSelectable(k)) return;
+      if (recogDragMode === 'add' && !recogSel.has(k))  { recogSel.add(k);    recogUpdateEditBtns(); }
+      if (recogDragMode === 'remove' && recogSel.has(k)) { recogSel.delete(k); recogUpdateEditBtns(); }
+    }
+    function onRecogDragEnd() {
+      recogDragMode = null;
+      document.removeEventListener('pointermove', onRecogDragMove);
+      document.removeEventListener('pointerup', onRecogDragEnd);
+      document.removeEventListener('pointercancel', onRecogDragEnd);
+    }
     tilesEl.addEventListener('pointerdown', e => {
-      const k = recogFindRT(e); if (k == null) return;
-      e.preventDefault(); // prevent text selection / scroll
-      tilesEl.setPointerCapture(e.pointerId);
+      const k = recogHitIdx(e); if (k == null || !recogIsSelectable(k)) return;
+      e.preventDefault();
       recogDragMode = recogSel.has(k) ? 'remove' : 'add';
       if (recogDragMode === 'add') recogSel.add(k); else recogSel.delete(k);
       recogUpdateEditBtns();
+      document.addEventListener('pointermove', onRecogDragMove);
+      document.addEventListener('pointerup', onRecogDragEnd);
+      document.addEventListener('pointercancel', onRecogDragEnd);
     });
-    tilesEl.addEventListener('pointermove', e => {
-      if (recogDragMode == null) return;
-      e.preventDefault();
-      const hit = document.elementFromPoint(e.clientX, e.clientY);
-      if (!hit) return;
-      const rt = hit.closest ? hit.closest('[data-rt-idx]') : null;
-      if (!rt) return;
-      const k = +rt.dataset.rtIdx;
-      if (recogDragMode === 'add' && !recogSel.has(k))  { recogSel.add(k);    recogUpdateEditBtns(); }
-      if (recogDragMode === 'remove' && recogSel.has(k)) { recogSel.delete(k); recogUpdateEditBtns(); }
-    });
-    tilesEl.addEventListener('pointerup',     () => { recogDragMode = null; });
-    tilesEl.addEventListener('pointercancel', () => { recogDragMode = null; });
 
     // 取消副露分组（点击 × 按钮）
     tilesEl.addEventListener('click', e => {
@@ -1961,6 +1976,13 @@
       if (tiles.some(t => t.isBack)) return;
       const melds = partitionMelds(tiles);
       if (!melds) return;
+      const selSet = new Set(idxs);
+      const winWasPicked = lastGrouping.winIdx != null && selSet.has(lastGrouping.winIdx);
+      if (winWasPicked) {
+        predColorMap.delete(lastOrdered[lastGrouping.winIdx].pred);
+        lastGrouping.consumed[lastGrouping.winIdx] = null;
+        lastGrouping.winIdx = null;
+      }
       let off = 0;
       melds.forEach(m => {
         const cnt = m.tiles.length;
@@ -1973,6 +1995,16 @@
         lastGrouping.groups.push({ type: m.type, idxs: mIdxs, concealed: false });
         off += cnt;
       });
+      if (winWasPicked) {
+        for (let i = lastOrdered.length - 1; i >= 0; i--) {
+          if (!lastGrouping.consumed[i] && !lastOrdered[i].isBack) {
+            lastGrouping.consumed[i] = { kind: 'win' };
+            lastGrouping.winIdx = i;
+            predColorMap.set(lastOrdered[i].pred, { color: RECOG_WIN_COLOR, dashed: false });
+            break;
+          }
+        }
+      }
       recogSel.clear();
       drawCanvas(); renderTileList(); recogUpdateEditBtns();
     });
