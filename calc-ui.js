@@ -1646,7 +1646,7 @@
       ctx.lineWidth = LW * 0.7;
       for (const p of preds) { ctx.strokeStyle = inRoi(p) ? '#e23b3b' : 'rgba(120,120,120,.4)'; ctx.strokeRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height); }
       const r = roiNow();
-      if (r) { ctx.fillStyle = 'rgba(21,101,192,.14)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.lineWidth = LW; ctx.strokeStyle = '#1565c0'; ctx.setLineDash([LW * 2, LW]); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.setLineDash([]); }
+      if (r) { ctx.fillStyle = 'rgba(255,20,147,.16)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.lineWidth = LW; ctx.strokeStyle = '#ff1493'; ctx.setLineDash([LW * 2, LW]); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.setLineDash([]); }
     }
     // 列表：框内牌码（只在放手/清除后更新，不随拖动实时变）
     function renderList() {
