@@ -394,17 +394,39 @@
     });
     return out;
   }
+  // 滑选/点选：pointerdown 切换起点，进入其它牌只加入不切换；期间禁用 click，避免"按下+松开"再触发一次点击导致取消
   function attachSelectHandlers(tEl, key) {
-    let entered = false;
-    // 单击切换
-    tEl.addEventListener('click', () => { toggleSelected(key); updateSelectionUI(); });
-    // 滑动连选：进入时若未选中就选上（不切换掉已选中的，避免手抖误取消）
-    tEl.addEventListener('pointerdown', () => { entered = true; });
-    tEl.addEventListener('pointerenter', e => {
-      if (e.buttons !== 1) return;   // 必须按住主键
-      if (!S.selected.has(key)) { S.selected.add(key); updateSelectionUI(); }
-    });
-    tEl.addEventListener('pointerup', () => { entered = false; });
+    tEl.dataset.selKey = key;
+    tEl.addEventListener('click', e => e.preventDefault());
+  }
+  // 委托到两个容器：滑动时被替换的元素也无所谓，我们从事件目标读 dataset.selKey
+  function initSelectPointerDelegation() {
+    const areas = [dom.standingArea, dom.winArea];
+    let dragged = false;                    // 是否发生过 pointermove
+    let startedInSel = false;               // 起点在选牌模式下的牌上
+    const keyFromEvent = e => {
+      const el = e.target.closest('.hc-tile');
+      return el && el.dataset.selKey ? el.dataset.selKey : null;
+    };
+    for (const area of areas) {
+      area.addEventListener('pointerdown', e => {
+        if (!S.selectMode) return;
+        const k = keyFromEvent(e); if (!k) return;
+        startedInSel = true; dragged = false;
+        toggleSelected(k); updateSelectionUI();
+      });
+      area.addEventListener('pointermove', e => {
+        if (!S.selectMode || !startedInSel) return;
+        if (e.buttons !== 1 && e.pointerType !== 'touch') return;
+        // 触摸时 pointerenter 不可靠，用 elementFromPoint 兜底
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const tile = el && el.closest && el.closest('.hc-tile');
+        const k = tile && tile.dataset.selKey;
+        if (k && !S.selected.has(k)) { dragged = true; S.selected.add(k); updateSelectionUI(); }
+      });
+      area.addEventListener('pointerup', () => { startedInSel = false; dragged = false; });
+      area.addEventListener('pointercancel', () => { startedInSel = false; dragged = false; });
+    }
   }
   function refreshSelectionButtons() {
     const n = S.selected.size;
@@ -469,6 +491,10 @@
     for (const i of standIdx) S.standing.splice(i, 1);
     if (winPicked) S.winTile = null;
     S.melds.push(meld);
+    // 若和牌张被摘走，且立牌超过新上限，用立牌最右一张递补为和牌张
+    if (winPicked && !S.winTile && S.standing.length > maxStanding()) {
+      S.winTile = S.standing.pop();
+    }
     clearSelection();
     _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
     render();
@@ -1514,6 +1540,7 @@
     dom.selectMode?.addEventListener('change', e => setSelectMode(e.target.checked));
     dom.setMeldBtn?.addEventListener('click',  actionSetMeld);
     dom.setWinBtn?.addEventListener('click',   actionSetWin);
+    initSelectPointerDelegation();
     setupRecognizer();
   }
 
