@@ -426,6 +426,28 @@
       area.addEventListener('pointercancel', () => { mode = null; });
     }
   }
+  // 从左到右把选中的牌切成若干副（每副 3 张=刻/顺 或 4 张=杠）。
+  // 每一步优先取 3 张，不行再试 4 张；两者都不成即回退让上一步换取法。
+  // 成功返回 [meld,...]；失败返回 null。
+  function partitionMelds(tiles) {
+    const isKong4 = a => a.length === 4 && a.every(t => t.code === a[0].code);
+    const kongMeld = a => ({ type: 'kong', tile: a[0].code, tiles: a.map(t => ({ ...t })), concealed: false, promoted: false });
+    function solve(i) {
+      if (i === tiles.length) return [];
+      // 先试 3 张 —— 优先级更高，避免"4 张同码"被抢当杠
+      if (i + 3 <= tiles.length) {
+        const m = tryFormMeld(tiles.slice(i, i + 3));
+        if (m) { const rest = solve(i + 3); if (rest) return [m, ...rest]; }
+      }
+      if (i + 4 <= tiles.length) {
+        const g = tiles.slice(i, i + 4);
+        if (isKong4(g)) { const rest = solve(i + 4); if (rest) return [kongMeld(g), ...rest]; }
+      }
+      return null;
+    }
+    return solve(0);
+  }
+
   function refreshSelectionButtons() {
     const n = S.selected.size;
     if (dom.setWinBtn)  dom.setWinBtn.disabled  = !(S.selectMode && n === 1);
@@ -433,13 +455,7 @@
       let ok = false;
       if (S.selectMode && n >= 3) {
         const tiles = collectSelectedTiles().map(o => o.tile);
-        if (n === 4 && tiles.every(t => t.code === tiles[0].code)) ok = true;   // 杠
-        else if (n % 3 === 0) {
-          ok = true;
-          for (let i = 0; i < tiles.length && ok; i += 3) {
-            if (!tryFormMeld(tiles.slice(i, i + 3))) ok = false;
-          }
-        }
+        ok = !!partitionMelds(tiles);
       }
       dom.setMeldBtn.disabled = !ok;
     }
@@ -482,20 +498,9 @@
     if (picks.length < 3) return;
     const winPicked = picks.some(o => o.key === 'win');
 
-    // 4 张同码 = 杠，仅在恰好选中 4 张时启用（避免和"两个刻子共 6 张"歧义）
-    let melds = [];
-    if (picks.length === 4 && picks.every(o => o.tile.code === picks[0].tile.code)) {
-      melds = [{ type: 'kong', tile: picks[0].tile.code, tiles: picks.map(o => ({ ...o.tile })), concealed: false, promoted: false }];
-    } else {
-      // 从左到右按 3 张一组切分：能成刻/顺就加入，遇到不合法立即中断
-      if (picks.length % 3 !== 0) { showToast('副露需要 3 张的倍数（或 4 张同牌）'); return; }
-      for (let i = 0; i < picks.length; i += 3) {
-        const group = picks.slice(i, i + 3).map(o => o.tile);
-        const meld = tryFormMeld(group);
-        if (!meld) { showToast(`第 ${i / 3 + 1} 组不成刻/顺，已中断`); return; }
-        melds.push(meld);
-      }
-    }
+    // 从左到右切分（每副 3 张=刻/顺 或 4 张=杠），失败即整批中断
+    const melds = partitionMelds(picks.map(o => o.tile));
+    if (!melds) { showToast('选中的牌无法从左到右切成合法的刻/顺/杠'); return; }
 
     // 从立牌/和牌张一次性移除全部选中的牌（从大到小删避免索引错位）
     const standIdx = picks.filter(o => o.key.startsWith('standing:')).map(o => +o.key.split(':')[1]).sort((a, b) => b - a);
