@@ -639,6 +639,8 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 }
 .hc-select-tools .hc-btn-xs:disabled { opacity: .35; cursor: not-allowed; }
 .hc-select-tools .hc-btn-xs:not(:disabled):hover { background: var(--accent); color: #fff; }
+.hc-select-tools .hc-btn-xs.hc-btn-danger { color: #c0392b; border-color: #c0392b; }
+.hc-select-tools .hc-btn-xs.hc-btn-danger:not(:disabled):hover { background: #c0392b; color: #fff; }
 /* 选中态：图上覆一层强调色 */
 .hc-tile.hc-selected { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; box-shadow: inset 0 0 0 9999px rgba(139,26,26,.18); }
 /* 选牌模式下用手指指示可选，且禁用触摸滚动以支持滑选 */
@@ -1020,6 +1022,7 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
   background: transparent; border-radius: 6px; cursor: pointer;
 }
 .hc-recog-mini.active { background: var(--accent); color: #fff; }
+.hc-recog-mini:disabled { opacity: .4; cursor: not-allowed; }
 .hc-recog-hint { font-size: .76rem; color: var(--text-muted); margin: 4px 0 8px; line-height: 1.5; }
 .hc-recog-msg { font-size: .82rem; margin: 6px 0; min-height: 1.1em; }
 .hc-recog-msg.err { color: #c0392b; }
@@ -1027,11 +1030,16 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 #hc-recog-canvas.drawing { touch-action: none; cursor: crosshair; box-shadow: 0 0 0 3px var(--accent); }
 .hc-recog-summary { font-size: .85rem; font-family: monospace; word-break: break-all; margin: 8px 0; }
 .hc-recog-tiles { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
-.hc-recog-tiles .rt { display: flex; flex-direction: column; align-items: center; }
+.hc-recog-tiles .rt { display: flex; flex-direction: column; align-items: center; padding: 2px; border-radius: 5px; }
 .hc-recog-tiles .rt img { width: 30px; height: 40px; object-fit: contain; border-radius: 3px; }
 .hc-recog-tiles .rt img.haku { background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
 .hc-recog-tiles .rt span { font-size: .64rem; color: var(--text-muted); margin-top: 2px; }
-.hc-recog-actions { display: flex; justify-content: flex-end; }
+/* 自动分组着色：副露组（循环色，颜色由 JS 通过 --rt-color 设置）/ 已锁定和牌张 / 未锁定候选 */
+.hc-recog-tiles .rt.rt-grouped { box-shadow: inset 0 0 0 2px var(--rt-color); }
+.hc-recog-tiles .rt.rt-win { box-shadow: inset 0 0 0 2px #f9a825; background: rgba(249,168,37,.12); }
+.hc-recog-tiles .rt.rt-candidate { box-shadow: inset 0 0 0 2px #c0a000; outline: 2px dashed #c0a000; outline-offset: 1px; }
+.hc-recog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.hc-recog-actions .hc-calc-btn { flex: 1; }
 
 /* 流局满贯：牌区与键盘区锁定 */
 .hc-tiles-locked #hc-standing-area,

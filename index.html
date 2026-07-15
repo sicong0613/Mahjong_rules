@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="国标麻将（含村规）番种速查与计番工具">
   <title>麻将番种速查</title>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -69,6 +69,7 @@
           <label class="hc-select-toggle"><input type="checkbox" id="hc-select-mode"> 选牌</label>
           <button id="hc-set-meld" class="hc-btn-xs" disabled title="选中的3~4张组成刻子/顺子/杠">设为副露</button>
           <button id="hc-set-win"  class="hc-btn-xs" disabled title="把选中的单张设为和牌张">和牌张</button>
+          <button id="hc-del-sel"  class="hc-btn-xs hc-btn-danger" disabled title="删除选中的牌（不放回手牌）">删除</button>
         </div>
       </div>
 
@@ -141,7 +142,7 @@
       <div class="hc-section hc-calc-row">
         <button id="hc-calc-btn" class="hc-calc-btn" disabled data-i18n="计 算">计 算</button>
         <button id="hc-upload-btn" class="hc-upload-btn" disabled title="计算并上传番型数据">上传</button>
-        <button id="hc-recognize-btn" class="hc-recog-btn" title="拍照识别，自动填入立牌">📷</button>
+        <button id="hc-recognize-btn" class="hc-recog-btn" title="拍照识别，自动填入立牌/副露/和牌张">📷</button>
         <button id="hc-kb-toggle" class="hc-kb-btn" title="收起键盘">⌨</button>
       </div>
 
@@ -170,13 +171,15 @@
           <button id="hc-recog-roi" class="hc-recog-mini" hidden>框选手牌区域</button>
           <button id="hc-recog-clear" class="hc-recog-mini" hidden>清除框选</button>
         </div>
-        <p class="hc-recog-hint">上传<strong>完整照片</strong>后，点「框选手牌区域」拖一个矩形框住你的手牌，只保留框内的牌。</p>
+        <p class="hc-recog-hint">上传<strong>完整照片</strong>后，点「框选手牌区域」拖一个矩形框住你的手牌，只保留框内的牌。
+          把被吃/碰/杠的牌（含和牌张）<strong>转向摆放</strong>，可自动识别为副露/和牌张——转向的牌若能与相邻牌组成刻子/顺子/杠，即归为副露；否则作为候选和牌张，全场恰好一个候选时自动锁定。</p>
         <div id="hc-recog-msg" class="hc-recog-msg"></div>
         <canvas id="hc-recog-canvas" hidden></canvas>
         <div id="hc-recog-summary" class="hc-recog-summary"></div>
         <div id="hc-recog-tiles" class="hc-recog-tiles"></div>
         <div class="hc-recog-actions">
-          <button id="hc-recog-fill" class="hc-calc-btn" disabled>填入立牌</button>
+          <button id="hc-recog-fill-manual" class="hc-recog-mini" disabled title="不看自动分组，前13张填立牌、第14张填和牌张">仅填立牌</button>
+          <button id="hc-recog-fill" class="hc-calc-btn" disabled>接受并填入</button>
         </div>
       </div>
     </div>
@@ -192,7 +195,7 @@
   <script src="data/wasm_name_map.js?v=3"></script>
   <script src="data/fan_calculator.js?v=3"></script>
   <script src="calculator.js?v=3"></script>
-  <script src="calc-ui.js?v=11"></script>
+  <script src="calc-ui.js?v=12"></script>
   <script src="script.js?v=3"></script>
 </body>
 </html>

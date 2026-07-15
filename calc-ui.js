@@ -451,6 +451,7 @@
   function refreshSelectionButtons() {
     const n = S.selected.size;
     if (dom.setWinBtn)  dom.setWinBtn.disabled  = !(S.selectMode && n === 1);
+    if (dom.delSelBtn)  dom.delSelBtn.disabled  = !(S.selectMode && n >= 1);
     if (dom.setMeldBtn) {
       let ok = false;
       if (S.selectMode && n >= 3) {
@@ -516,6 +517,19 @@
     render();
     const types = melds.map(m => m.type === 'kong' ? '杠' : m.type === 'pung' ? '刻子' : '顺子').join('、');
     showToast(melds.length === 1 ? `已设为${types}` : `已添加 ${melds.length} 副（${types}）`);
+  }
+  // 删除选中的立牌/和牌张（不放回，纯移除；用于清掉识别时框进来的不属于自己的牌）
+  function actionDeleteSelected() {
+    if (!S.selectMode || S.selected.size === 0) return;
+    const picks = collectSelectedTiles();
+    const standIdx = picks.filter(o => o.key.startsWith('standing:')).map(o => +o.key.split(':')[1]).sort((a, b) => b - a);
+    for (const idx of standIdx) S.standing.splice(idx, 1);
+    if (picks.some(o => o.key === 'win')) S.winTile = null;
+    const n = picks.length;
+    clearSelection();
+    _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
+    render();
+    showToast(`已删除 ${n} 张`);
   }
 
   function renderStanding() {
@@ -1364,6 +1378,7 @@
     dom.selectMode    = document.getElementById('hc-select-mode');
     dom.setMeldBtn    = document.getElementById('hc-set-meld');
     dom.setWinBtn     = document.getElementById('hc-set-win');
+    dom.delSelBtn     = document.getElementById('hc-del-sel');
     dom.modeBtns      = document.querySelectorAll('.hc-mode-btn');
 
     renderPicker();
@@ -1557,6 +1572,7 @@
     dom.selectMode?.addEventListener('change', e => setSelectMode(e.target.checked));
     dom.setMeldBtn?.addEventListener('click',  actionSetMeld);
     dom.setWinBtn?.addEventListener('click',   actionSetWin);
+    dom.delSelBtn?.addEventListener('click',   actionDeleteSelected);
     initSelectPointerDelegation();
     setupRecognizer();
   }
@@ -1572,6 +1588,75 @@
     return rank === 0 ? { code: (suit << 4) | 5, isRed: true } : { code: (suit << 4) | rank, isRed: false };
   }
 
+  // 拍照识别配色：副露组循环色 / 已锁定和牌张 / 未锁定候选（虚线）
+  const RECOG_GROUP_COLORS = ['#7b1fa2', '#00838f', '#ef6c00', '#ad1457', '#6d4c41', '#3949ab'];
+  const RECOG_WIN_COLOR = '#f9a825';
+  const RECOG_CANDIDATE_COLOR = '#c0a000';
+  // 转向阈值：牌框宽/高比相对整行中位数偏离超过此比例（对数尺度）即视为被转向摆放。
+  // 现实中被吃/碰/杠或作和牌张标记而转向的牌，宽高比会明显区别于同行其它直放的牌；
+  // 具体数值可能需要根据实拍效果调整。
+  const RECOG_ROTATE_LOG_THRESHOLD = Math.log(1.4);
+
+  // 识别自动分组：利用"被吃/碰/杠的牌会转向摆放"这一惯例，定位副露与候选和牌张。
+  // orderedTiles: 已按 x 排序的 [{code,isRed,pred}]（pred 含 width/height 用于判断朝向）
+  // 每个被判定为转向的牌，从左到右依次检测：优先测含它的 4 张同码窗口（杠），
+  // 不行再测含它的 3 张窗口（顺子/刻子，从左到右尝试 3 种起点）；
+  // 都不成立则视为「候选和牌张」；若全场恰好只有 1 个候选，才锁定为和牌张。
+  // 返回 { consumed:(null|{kind:'meld',group}|{kind:'win'})[], groups:[{type,idxs}], winIdx, winCandidates }
+  function autoGroupRecognized(orderedTiles) {
+    const n = orderedTiles.length;
+    const consumed = new Array(n).fill(null);
+    const groups = [];
+    const winCandidates = [];
+    if (n === 0) return { consumed, groups, winIdx: null, winCandidates };
+
+    const ratios = orderedTiles.map(t => t.pred.width / Math.max(1, t.pred.height));
+    const sortedR = [...ratios].sort((a, b) => a - b);
+    const median = sortedR[Math.floor(sortedR.length / 2)] || 1;
+    const isRotated = i => median > 0 && Math.abs(Math.log(ratios[i] / median)) > RECOG_ROTATE_LOG_THRESHOLD;
+
+    const tileAt = i => ({ code: orderedTiles[i].code, isRed: orderedTiles[i].isRed });
+    const free = idxs => idxs.every(k => k >= 0 && k < n && consumed[k] === null);
+
+    for (let i = 0; i < n; i++) {
+      if (consumed[i] !== null || !isRotated(i)) continue;
+      let matched = null;
+      // 优先测 4 张同码窗口（杠），避免"4 张同码"被误判成刻子+落单
+      for (let s = i - 3; s <= i && !matched; s++) {
+        const idxs = [s, s + 1, s + 2, s + 3];
+        if (s < 0 || s + 4 > n || !free(idxs)) continue;
+        const tiles = idxs.map(tileAt);
+        if (tiles.every(t => t.code === tiles[0].code)) matched = { type: 'kong', idxs };
+      }
+      if (!matched) {
+        for (let s = i - 2; s <= i && !matched; s++) {
+          const idxs = [s, s + 1, s + 2];
+          if (s < 0 || s + 3 > n || !free(idxs)) continue;
+          const m = tryFormMeld(idxs.map(tileAt));
+          if (m) matched = { type: m.type, idxs };
+        }
+      }
+      if (matched) {
+        const g = groups.length;
+        matched.idxs.forEach(k => { consumed[k] = { kind: 'meld', group: g }; });
+        groups.push(matched);
+      } else {
+        winCandidates.push(i);
+      }
+    }
+
+    const winIdx = winCandidates.length === 1 ? winCandidates[0] : null;
+    if (winIdx != null) consumed[winIdx] = { kind: 'win' };
+    return { consumed, groups, winIdx, winCandidates };
+  }
+
+  // 把一组识别到的 idxs 转成计番器的副露对象（复用 tryFormMeld 取正确的 tile 中心值）
+  function groupToMeld(group, orderedTiles) {
+    const tiles = group.idxs.map(i => ({ code: orderedTiles[i].code, isRed: orderedTiles[i].isRed }));
+    if (group.type === 'kong') return { type: 'kong', tile: tiles[0].code, tiles, concealed: false, promoted: false };
+    return tryFormMeld(tiles);
+  }
+
   function setupRecognizer() {
     const modal = document.getElementById('hc-recog-modal');
     if (!modal) return;
@@ -1580,21 +1665,27 @@
     const fileEl  = document.getElementById('hc-recog-file');
     const roiBtn  = document.getElementById('hc-recog-roi');
     const clearBtn = document.getElementById('hc-recog-clear');
-    const fillBtn = document.getElementById('hc-recog-fill');
+    const fillBtn  = document.getElementById('hc-recog-fill');          // 接受并填入（自动分组）
+    const fillManualBtn = document.getElementById('hc-recog-fill-manual'); // 仅填立牌（不看分组，旧逻辑）
     const msgEl   = document.getElementById('hc-recog-msg');
     const sumEl   = document.getElementById('hc-recog-summary');
     const tilesEl = document.getElementById('hc-recog-tiles');
     const MAX_SIDE = 1600;
 
-    let img = null, preds = [], roi = null, draft = null, mode = 'view', start = null, keptCodes = [];
+    let img = null, preds = [], roi = null, draft = null, mode = 'view', start = null;
+    let keptCodes = [];             // 兼容：框内牌码（供"仅填立牌"与统计使用）
+    let lastOrdered = [];           // 本次分组所用的有序牌列表 [{code,isRed,pred,str}]
+    let lastGrouping = null;        // autoGroupRecognized() 的结果
+    let predColorMap = new Map();   // pred → {color, dashed}，供画布描边使用
+
     const status = (t, e) => { msgEl.textContent = t; msgEl.className = 'hc-recog-msg' + (e ? ' err' : ''); };
     const roiNow = () => draft || roi;
     const inRoi = p => { const r = roiNow(); return !r || (p.x >= r.x0 && p.x <= r.x1 && p.y >= r.y0 && p.y <= r.y1); };
     const loadImage = f => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
 
     function openModal() {
-      preds = []; roi = null; draft = null; keptCodes = []; exitDraw();
-      canvas.hidden = true; roiBtn.hidden = true; clearBtn.hidden = true; fillBtn.disabled = true;
+      preds = []; roi = null; draft = null; keptCodes = []; lastOrdered = []; lastGrouping = null; predColorMap = new Map(); exitDraw();
+      canvas.hidden = true; roiBtn.hidden = true; clearBtn.hidden = true; fillBtn.disabled = true; fillManualBtn.disabled = true;
       tilesEl.innerHTML = ''; sumEl.textContent = ''; status('选择或拍一张手牌照片');
       modal.classList.remove('hidden');
     }
@@ -1611,8 +1702,8 @@
     fileEl.addEventListener('change', async e => {
       const file = e.target.files[0]; e.target.value = '';
       if (!file) return;
-      preds = []; roi = null; draft = null; keptCodes = []; exitDraw();
-      roiBtn.hidden = true; clearBtn.hidden = true; tilesEl.innerHTML = ''; sumEl.textContent = ''; fillBtn.disabled = true;
+      preds = []; roi = null; draft = null; keptCodes = []; lastOrdered = []; lastGrouping = null; predColorMap = new Map(); exitDraw();
+      roiBtn.hidden = true; clearBtn.hidden = true; tilesEl.innerHTML = ''; sumEl.textContent = ''; fillBtn.disabled = true; fillManualBtn.disabled = true;
       status('读取图片…');
       let im; try { im = await loadImage(file); } catch { status('无法读取该图片', true); return; }
       const scale = Math.min(1, MAX_SIDE / Math.max(im.width, im.height));
@@ -1638,36 +1729,136 @@
     canvas.addEventListener('pointermove', e => { if (mode !== 'draw' || !start) return; const p = toCanvas(e); draft = { x0: Math.min(start.x, p.x), y0: Math.min(start.y, p.y), x1: Math.max(start.x, p.x), y1: Math.max(start.y, p.y) }; drawCanvas(); });
     canvas.addEventListener('pointerup', () => { if (mode !== 'draw' || !start) return; const d = draft; if (d && d.x1 - d.x0 >= 10 && d.y1 - d.y0 >= 10) { roi = d; clearBtn.hidden = false; } exitDraw(); redrawAll(); });
 
-    // 画布：图 + 检测框 + ROI（拖动时只重画这个，下方列表不动，避免布局位移）
+    // 框内已映射的牌，按 x 排序（拖动过程中不重算，只在放手/清除后调用）
+    function buildOrderedTiles() {
+      const kept = preds.filter(inRoi).sort((a, b) => a.x - b.x);
+      const ordered = [];
+      for (const p of kept) {
+        const str = recogClassToSvg(p.class);
+        if (!str) continue;
+        const t = recogSvgToTile(str);
+        if (t) ordered.push({ ...t, pred: p, str });
+      }
+      return ordered;
+    }
+    // 重算分组（副露/候选和牌张），并预建 pred → 描边配色 的映射
+    function computeGrouping() {
+      lastOrdered = buildOrderedTiles();
+      lastGrouping = autoGroupRecognized(lastOrdered);
+      predColorMap = new Map();
+      lastOrdered.forEach((t, i) => {
+        const c = lastGrouping.consumed[i];
+        let info = null;
+        if (c && c.kind === 'meld') info = { color: RECOG_GROUP_COLORS[c.group % RECOG_GROUP_COLORS.length], dashed: false };
+        else if (c && c.kind === 'win') info = { color: RECOG_WIN_COLOR, dashed: false };
+        else if (lastGrouping.winCandidates.includes(i)) info = { color: RECOG_CANDIDATE_COLOR, dashed: true };
+        if (info) predColorMap.set(t.pred, info);
+      });
+    }
+
+    // 画布：图 + 检测框（按分组配色）+ 每组外框 + ROI（拖动时只重画这个，下方列表不动，避免布局位移）
     function drawCanvas() {
       if (!img) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       const LW = Math.max(3, canvas.width / 130);
-      ctx.lineWidth = LW * 0.7;
-      for (const p of preds) { ctx.strokeStyle = inRoi(p) ? '#e23b3b' : 'rgba(120,120,120,.4)'; ctx.strokeRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height); }
+      for (const p of preds) {
+        const info = inRoi(p) ? predColorMap.get(p) : null;
+        ctx.strokeStyle = info ? info.color : (inRoi(p) ? '#e23b3b' : 'rgba(120,120,120,.4)');
+        ctx.lineWidth = info ? LW : LW * 0.7;
+        ctx.setLineDash(info?.dashed ? [LW, LW * 0.8] : []);
+        ctx.strokeRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height);
+      }
+      ctx.setLineDash([]);
+      // 每个副露组画一个外框（同色，虚线，包住组内所有牌）
+      if (lastGrouping) {
+        lastGrouping.groups.forEach((g, gi) => {
+          const boxes = g.idxs.map(i => lastOrdered[i].pred).filter(inRoi);
+          if (boxes.length === 0) return;
+          const x0 = Math.min(...boxes.map(p => p.x - p.width / 2));
+          const y0 = Math.min(...boxes.map(p => p.y - p.height / 2));
+          const x1 = Math.max(...boxes.map(p => p.x + p.width / 2));
+          const y1 = Math.max(...boxes.map(p => p.y + p.height / 2));
+          const pad = LW * 1.4;
+          ctx.strokeStyle = RECOG_GROUP_COLORS[gi % RECOG_GROUP_COLORS.length];
+          ctx.lineWidth = LW * 0.8; ctx.setLineDash([LW * 1.6, LW]);
+          ctx.strokeRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
+          ctx.setLineDash([]);
+        });
+      }
       const r = roiNow();
       if (r) { ctx.fillStyle = 'rgba(18,24,58,.22)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.lineWidth = LW; ctx.strokeStyle = '#12183a'; ctx.setLineDash([LW * 2, LW]); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.setLineDash([]); }
     }
-    // 列表：框内牌码（只在放手/清除后更新，不随拖动实时变）
-    function renderList() {
-      const kept = preds.filter(inRoi).sort((a, b) => a.x - b.x);
-      tilesEl.innerHTML = ''; keptCodes = []; const unmapped = [];
-      for (const p of kept) {
-        const code = recogClassToSvg(p.class);
-        if (!code) { unmapped.push(p.class); continue; }
-        keptCodes.push(code);
-        const d = el('div', 'rt');
-        const im = document.createElement('img'); im.src = `img/tiles/${code}.svg`; im.alt = code; if (code === 'B') im.classList.add('haku');
-        const cap = document.createElement('span'); cap.textContent = `${code} ${Math.round((p.confidence || 0) * 100)}%`;
-        d.append(im, cap); tilesEl.appendChild(d);
-      }
-      sumEl.textContent = `${roi ? '框内' : '全部'} ${keptCodes.length} 张：${keptCodes.join(' ')}` +
-        (unmapped.length ? `（未映射: ${[...new Set(unmapped)].join(', ')}）` : '');
-      fillBtn.disabled = keptCodes.length === 0;
-    }
-    const redrawAll = () => { drawCanvas(); renderList(); };
 
+    // 列表：按分组结果着色显示（只在放手/清除/重新识别后更新，不随拖动实时变）
+    function renderTileList() {
+      const unmapped = [];
+      preds.filter(inRoi).forEach(p => { if (!recogClassToSvg(p.class)) unmapped.push(p.class); });
+
+      tilesEl.innerHTML = '';
+      keptCodes = lastOrdered.map(t => t.str);
+      lastOrdered.forEach((t, i) => {
+        const d = el('div', 'rt');
+        const im = document.createElement('img'); im.src = `img/tiles/${t.str}.svg`; im.alt = t.str; if (t.str === 'B') im.classList.add('haku');
+        const cap = document.createElement('span'); cap.textContent = `${t.str} ${Math.round((t.pred.confidence || 0) * 100)}%`;
+        d.append(im, cap);
+
+        const c = lastGrouping.consumed[i];
+        if (c && c.kind === 'meld') {
+          d.classList.add('rt-grouped');
+          d.style.setProperty('--rt-color', RECOG_GROUP_COLORS[c.group % RECOG_GROUP_COLORS.length]);
+          d.title = `副露组 ${c.group + 1}（${{chow:'顺子', pung:'刻子', kong:'杠'}[lastGrouping.groups[c.group].type] || ''}）`;
+        } else if (c && c.kind === 'win') {
+          d.classList.add('rt-win'); d.title = '已锁定为和牌张';
+        } else if (lastGrouping.winCandidates.includes(i)) {
+          d.classList.add('rt-candidate'); d.title = '疑似和牌张候选（未锁定，接受后可用选牌模式手动指定）';
+        }
+        tilesEl.appendChild(d);
+      });
+
+      const meldCount = lastGrouping.groups.length;
+      const winNote = lastGrouping.winIdx != null ? '已锁定和牌张'
+        : (lastGrouping.winCandidates.length > 1 ? `${lastGrouping.winCandidates.length} 个候选和牌张未锁定` : '未发现和牌张标记');
+      sumEl.textContent = `${roi ? '框内' : '全部'} ${lastOrdered.length} 张：${keptCodes.join(' ')}` +
+        ` ｜ 自动识别：副露 ${meldCount} 组，${winNote}` +
+        (unmapped.length ? `（未映射: ${[...new Set(unmapped)].join(', ')}）` : '');
+
+      const hasTiles = lastOrdered.length > 0;
+      fillBtn.disabled = !hasTiles;
+      fillManualBtn.disabled = !hasTiles;
+    }
+
+    const redrawAll = () => { computeGrouping(); drawCanvas(); renderTileList(); };
+
+    // 接受并填入：按自动分组结果，一次性写入 立牌 + 副露 + 和牌张
     fillBtn.addEventListener('click', () => {
+      if (!lastGrouping || lastOrdered.length === 0) return;
+      const { consumed, groups, winIdx, winCandidates } = lastGrouping;
+      const melds = groups.map(g => groupToMeld(g, lastOrdered));
+      let winTile = null;
+      const standing = [];
+      lastOrdered.forEach((t, i) => {
+        const c = consumed[i];
+        if (c && c.kind === 'win') { winTile = { code: t.code, isRed: t.isRed }; return; }
+        if (c && c.kind === 'meld') return;
+        standing.push({ code: t.code, isRed: t.isRed });
+      });
+      const cap = Math.max(0, 13 - melds.length * 3);
+      let truncNote = '';
+      if (standing.length > cap) { truncNote = `，立牌超出上限 ${standing.length - cap} 张已截断`; standing.length = cap; }
+
+      S.melds = melds; S.standing = standing; S.winTile = winTile; S.buffer = []; clearSelection();
+      _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
+      render();
+      dom.result.innerHTML = ''; dom.result.classList.add('hidden');
+      closeModal();
+      const ambiguous = winCandidates.length > 1;
+      showToast(`已自动填入：立牌 ${standing.length} 张、副露 ${melds.length} 组` +
+        (winTile ? '、已锁定和牌张' : (ambiguous ? `、${winCandidates.length} 个候选和牌张未锁定（请用选牌模式手动指定）` : '')) +
+        truncNote);
+    });
+
+    // 仅填立牌：不看自动分组，整体按旧逻辑填入（前 13 张立牌 + 第 14 张和牌张），供分组明显出错时兜底
+    fillManualBtn.addEventListener('click', () => {
       const tiles = keptCodes.map(recogSvgToTile).filter(Boolean);
       if (tiles.length === 0) return;
       const MAX = 13;
