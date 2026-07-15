@@ -49,13 +49,18 @@
       riichi: false, riichiType: 'riichi',
       dora: 0, ippatsu: false, prevRedFives: 0, dealerWin: false,
       fan_tian_he: false, fan_di_he: false, fan_ren_he: false, liujuManguan: false,
-      flowers: 0, prevalentWind: 0, seatWind: 0,
+      flowers: 0, prevalentWind: null, seatWind: null,   // null = 空白（不指定，字风刻只计幺九刻）
     };
   }
 
   function maxStanding() {
     return 13 - S.melds.length * 3;
   }
+
+  // 圈/门风为空白（null）时，向 WASM 传入越界值 4：is_winds 命中但 delta(0~3) 永不等于 4，
+  // 故不计圈风刻/门风刻，字风刻只保留幺九刻（1 番）。箭刻不受影响（有 is_winds 守卫）。
+  const WASM_NO_WIND = 4;
+  const windForWasm = w => (w == null ? WASM_NO_WIND : w);
 
   // 统计所有已使用的牌，返回两种 key：
   //   `${code}_total`  → 该牌面总数（红+普通合计）
@@ -925,7 +930,7 @@
       standing: newStanding.map(t => t.code), winTile: S.winTile.code, packs: [openPack],
       flowers: S.flowers, selfDrawn: S.selfDrawn, lastTile: S.lastTile,
       kongInvolved: S.kongWin, wallLast: S.wallLast || S.riverLast,
-      prevalentWind: S.prevalentWind, seatWind: S.seatWind,
+      prevalentWind: windForWasm(S.prevalentWind), seatWind: windForWasm(S.seatWind),
     });
     if (combo.error) return result; // 降级回原七对子结果
 
@@ -1103,7 +1108,7 @@
       standing: S.standing.map(t => t.code), winTile: S.winTile.code, packs,
       flowers: S.flowers, selfDrawn: S.selfDrawn, lastTile: S.lastTile,
       kongInvolved: S.kongWin, wallLast: S.wallLast || S.riverLast,
-      prevalentWind: S.prevalentWind, seatWind: S.seatWind,
+      prevalentWind: windForWasm(S.prevalentWind), seatWind: windForWasm(S.seatWind),
     });
     if (!result.error) {
       // Step 1: 广式命名修正（依赖运行时状态，必须先做）
@@ -1294,8 +1299,9 @@
       doraCountSel.value = '1'; doraCountSel.disabled = true;
       document.getElementById('hc-ippatsu').disabled = true;
       document.getElementById('hc-flowers').value   = 0;
-      document.getElementById('hc-prevalent').value = 0;
-      document.getElementById('hc-seat').value      = 0;
+      document.getElementById('hc-prevalent').value = '';
+      document.getElementById('hc-seat').value      = '';
+      document.getElementById('hc-seat').disabled   = false;
     }
     render();
     document.getElementById('hand-calc-page').classList.remove('hidden');
@@ -1411,8 +1417,9 @@
       doraCountSel.value = '1'; doraCountSel.disabled = true;
       document.getElementById('hc-ippatsu').disabled = true;
       document.getElementById('hc-flowers').value   = 0;
-      document.getElementById('hc-prevalent').value = 0;
-      document.getElementById('hc-seat').value      = 0;
+      document.getElementById('hc-prevalent').value = '';
+      document.getElementById('hc-seat').value      = '';
+      document.getElementById('hc-seat').disabled   = false;
       _lastResult = null;
       _lastHand   = null;
       _calcSig    = null;
@@ -1438,6 +1445,17 @@
     document.getElementById('hand-calc-page').addEventListener('input',  updateActionButtons);
     document.getElementById('hc-dealer-win').addEventListener('change', e => {
       S.dealerWin = e.target.checked;
+      // 庄赢 → 门风必为东：锁定门风为东并禁用选择；取消庄赢 → 恢复空白且可选
+      const seatSel = document.getElementById('hc-seat');
+      if (e.target.checked) {
+        S.seatWind = 0;
+        seatSel.value = '0';
+        seatSel.disabled = true;
+      } else {
+        S.seatWind = null;
+        seatSel.value = '';
+        seatSel.disabled = false;
+      }
     });
     document.getElementById('hc-self-drawn').addEventListener('change', e => {
       S.selfDrawn = e.target.checked;
@@ -1564,8 +1582,8 @@
         if (S.wallLast)  { S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false; }
       }
     });
-    document.getElementById('hc-prevalent').addEventListener('change',  e => { S.prevalentWind = +e.target.value; });
-    document.getElementById('hc-seat').addEventListener('change',       e => { S.seatWind      = +e.target.value; });
+    document.getElementById('hc-prevalent').addEventListener('change',  e => { S.prevalentWind = e.target.value === '' ? null : +e.target.value; });
+    document.getElementById('hc-seat').addEventListener('change',       e => { S.seatWind      = e.target.value === '' ? null : +e.target.value; });
     document.getElementById('hc-flowers').addEventListener('change',    e => { S.flowers       = +e.target.value; });
     dom.selectCheck?.addEventListener('change', () => setSelectMode(dom.selectCheck.checked));
     dom.setMeldBtn?.addEventListener('click',  actionSetMeld);
