@@ -1029,14 +1029,16 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 #hc-recog-canvas { max-width: 100%; border: 1px solid var(--border); border-radius: 8px; display: block; margin: 6px 0; touch-action: pan-y; }
 #hc-recog-canvas.drawing { touch-action: none; cursor: crosshair; box-shadow: 0 0 0 3px var(--accent); }
 .hc-recog-summary { font-size: .85rem; font-family: monospace; word-break: break-all; margin: 8px 0; }
-.hc-recog-tiles { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
-.hc-recog-tiles .rt { display: flex; flex-direction: column; align-items: center; padding: 2px; border-radius: 5px; }
+.hc-recog-tiles { display: flex; flex-wrap: wrap; gap: 5px; align-items: flex-start; margin-bottom: 12px; }
+.hc-recog-tiles .rt { display: flex; flex-direction: column; align-items: center; padding: 2px; border-radius: 4px; }
 .hc-recog-tiles .rt img { width: 30px; height: 40px; object-fit: contain; border-radius: 3px; }
 .hc-recog-tiles .rt img.haku { background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
 .hc-recog-tiles .rt span { font-size: .64rem; color: var(--text-muted); margin-top: 2px; }
-/* 自动分组着色：副露组（循环色，颜色由 JS 通过 --rt-color 设置）/ 已锁定和牌张 / 未锁定候选 */
-.hc-recog-tiles .rt.rt-grouped { box-shadow: inset 0 0 0 2px var(--rt-color); }
-.hc-recog-tiles .rt.rt-win { box-shadow: inset 0 0 0 2px #f9a825; background: rgba(249,168,37,.12); }
+/* 副露组容器：收窄内部牌间距，外边框统一颜色 */
+.hc-recog-tiles .rt-group { display: flex; flex-direction: row; align-items: flex-start; gap: 1px; padding: 2px; border-radius: 6px; border: 2px solid transparent; }
+.hc-recog-tiles .rt-group.rt-group-meld { border-color: #e23b3b; background: rgba(226,59,59,.06); }
+.hc-recog-tiles .rt-group.rt-group-win  { border-color: #f9a825; background: rgba(249,168,37,.10); }
+/* 候选和牌张（未锁定，仍作为独立 .rt 渲染） */
 .hc-recog-tiles .rt.rt-candidate { box-shadow: inset 0 0 0 2px #c0a000; outline: 2px dashed #c0a000; outline-offset: 1px; }
 .hc-recog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .hc-recog-actions .hc-calc-btn { flex: 1; }
