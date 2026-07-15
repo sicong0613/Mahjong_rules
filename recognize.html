@@ -139,9 +139,9 @@
 
       const r = roiNow();
       if (r) {
-        ctx.fillStyle = 'rgba(255,20,147,.16)';
+        ctx.fillStyle = 'rgba(18,24,58,.22)';
         ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
-        ctx.lineWidth = LW; ctx.strokeStyle = '#ff1493'; ctx.setLineDash([LW * 2, LW]);
+        ctx.lineWidth = LW; ctx.strokeStyle = '#12183a'; ctx.setLineDash([LW * 2, LW]);
         ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
         ctx.setLineDash([]);
       }
