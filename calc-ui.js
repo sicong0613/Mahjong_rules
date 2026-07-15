@@ -1742,8 +1742,7 @@
     roiBtn.onclick  = () => { mode === 'draw' ? exitDraw() : enterDraw(); };
     clearBtn.onclick = () => { roi = null; clearBtn.hidden = true; roiBtn.textContent = '框选手牌区域'; redrawAll(); };
 
-    fileEl.addEventListener('change', async e => {
-      const file = e.target.files[0]; e.target.value = '';
+    async function handleRecogFile(file) {
       if (!file) return;
       preds = []; roi = null; draft = null; keptCodes = []; lastOrdered = []; lastGrouping = null; predColorMap = new Map(); exitDraw();
       roiBtn.hidden = true; clearBtn.hidden = true; tilesEl.innerHTML = ''; sumEl.textContent = ''; fillBtn.disabled = true;      status('读取图片…');
@@ -1764,7 +1763,14 @@
         redrawAll();
         enterDraw();   // 识别后直接进入框选，省掉一次点击
       } catch (err) { status('网络错误：' + err.message, true); }
-    });
+    }
+
+    // 选择照片（相册/文件）与直接拍照共用同一处理逻辑
+    fileEl.addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; handleRecogFile(f); });
+    const cameraEl = document.getElementById('hc-recog-camera');
+    const cameraBtn = document.getElementById('hc-recog-camera-btn');
+    cameraBtn?.addEventListener('click', () => cameraEl?.click());
+    cameraEl?.addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; handleRecogFile(f); });
 
     function toCanvas(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) }; }
     canvas.addEventListener('pointerdown', e => { if (mode !== 'draw') return; canvas.setPointerCapture(e.pointerId); start = toCanvas(e); draft = { x0: start.x, y0: start.y, x1: start.x, y1: start.y }; });

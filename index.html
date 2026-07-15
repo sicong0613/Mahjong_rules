@@ -168,6 +168,8 @@
         </div>
         <div class="hc-recog-bar">
           <input id="hc-recog-file" type="file" accept="image/*">
+          <input id="hc-recog-camera" type="file" accept="image/*" capture="environment" hidden>
+          <button id="hc-recog-camera-btn" class="hc-recog-mini" title="调用相机直接拍照">📷 拍照</button>
           <button id="hc-recog-roi" class="hc-recog-mini" hidden>框选手牌区域</button>
           <button id="hc-recog-clear" class="hc-recog-mini" hidden>清除框选</button>
         </div>
@@ -197,7 +199,7 @@
   <script src="data/wasm_name_map.js?v=3"></script>
   <script src="data/fan_calculator.js?v=3"></script>
   <script src="calculator.js?v=3"></script>
-  <script src="calc-ui.js?v=17"></script>
+  <script src="calc-ui.js?v=18"></script>
   <script src="script.js?v=3"></script>
 </body>
 </html>
