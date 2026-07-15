@@ -1663,7 +1663,11 @@
     }
 
     const winIdx = winCandidates.length === 1 ? winCandidates[0] : null;
-    if (winIdx != null) consumed[winIdx] = { kind: 'win' };
+    if (winIdx != null) {
+      // 锁定的和牌张不再算作候选，避免其被消费/取消后又以候选身份重现
+      consumed[winIdx] = { kind: 'win' };
+      return { consumed, groups, winIdx, winCandidates: [] };
+    }
     return { consumed, groups, winIdx, winCandidates };
   }
 
@@ -2000,6 +2004,7 @@
           if (!lastGrouping.consumed[i] && !lastOrdered[i].isBack) {
             lastGrouping.consumed[i] = { kind: 'win' };
             lastGrouping.winIdx = i;
+            lastGrouping.winCandidates = lastGrouping.winCandidates.filter(k => k !== i);
             predColorMap.set(lastOrdered[i].pred, { color: RECOG_WIN_COLOR, dashed: false });
             break;
           }
