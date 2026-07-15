@@ -43,6 +43,8 @@
       melds: [],      // [{type, tile, tiles, concealed, promoted}]
       buffer: [],     // 副露/暗杠缓冲
       replacing: null,// {area:'standing'|'win', index} | null
+      selectMode: false,          // 选牌模式：为 true 时点/滑立牌·和牌张 = 选中而非替换
+      selected: new Set(),        // 选中集合，元素为 'standing:i' 或 'win'
       selfDrawn: false, lastTile: false, kongWin: false, wallLast: false, riverLast: false, gangKaiChong: false, qiangGang: false,
       riichi: false, riichiType: 'riichi',
       dora: 0, ippatsu: false, prevRedFives: 0, dealerWin: false,
@@ -248,6 +250,7 @@
     updateKongWinCheckbox();
     updateDoraDropdown();
     updateActionButtons();
+    refreshSelectionButtons();
   }
 
   function countRedFives() {
@@ -371,6 +374,107 @@
     render();
   }
 
+  // ─── 选牌模式（对立牌 / 和牌张 多选，支持点/滑）─────────────
+  function toggleSelected(key) {
+    if (S.selected.has(key)) S.selected.delete(key);
+    else                     S.selected.add(key);
+  }
+  function clearSelection() { S.selected.clear(); }
+  function collectSelectedTiles() {
+    // 返回 [{key, tile}]，按 key 顺序：先立牌（按索引），后 win
+    const out = [];
+    [...S.selected].sort((a, b) => {
+      if (a === 'win') return 1; if (b === 'win') return -1;
+      return (+a.split(':')[1]) - (+b.split(':')[1]);
+    }).forEach(k => {
+      if (k === 'win' && S.winTile) out.push({ key: k, tile: S.winTile });
+      else if (k.startsWith('standing:')) {
+        const i = +k.split(':')[1]; if (S.standing[i]) out.push({ key: k, tile: S.standing[i] });
+      }
+    });
+    return out;
+  }
+  function attachSelectHandlers(tEl, key) {
+    let entered = false;
+    // 单击切换
+    tEl.addEventListener('click', () => { toggleSelected(key); updateSelectionUI(); });
+    // 滑动连选：进入时若未选中就选上（不切换掉已选中的，避免手抖误取消）
+    tEl.addEventListener('pointerdown', () => { entered = true; });
+    tEl.addEventListener('pointerenter', e => {
+      if (e.buttons !== 1) return;   // 必须按住主键
+      if (!S.selected.has(key)) { S.selected.add(key); updateSelectionUI(); }
+    });
+    tEl.addEventListener('pointerup', () => { entered = false; });
+  }
+  function refreshSelectionButtons() {
+    const n = S.selected.size;
+    if (dom.setWinBtn)  dom.setWinBtn.disabled  = !(S.selectMode && n === 1);
+    if (dom.setMeldBtn) {
+      let ok = false;
+      if (S.selectMode && (n === 3 || n === 4)) {
+        const tiles = collectSelectedTiles().map(o => o.tile);
+        if (n === 3) ok = !!tryFormMeld(tiles);
+        else         ok = tiles.every(t => t.code === tiles[0].code);   // 4 张 = 杠
+      }
+      dom.setMeldBtn.disabled = !ok;
+    }
+  }
+  // 只更新 selected 类和按钮，不动整块 DOM（避免手指下的元素被重建导致滑选中断）
+  function updateSelectionUI() {
+    dom.standingArea.querySelectorAll('.hc-tile').forEach((el, i) => {
+      el.classList.toggle('hc-selected', S.selected.has('standing:' + i));
+    });
+    dom.winArea.querySelectorAll('.hc-tile').forEach(el => {
+      el.classList.toggle('hc-selected', S.selected.has('win'));
+    });
+    refreshSelectionButtons();
+  }
+  function setSelectMode(on) {
+    S.selectMode = on;
+    if (!on) clearSelection();
+    document.getElementById('hand-calc-page').classList.toggle('hc-selecting', on);
+    render();
+  }
+  function actionSetWin() {
+    if (!S.selectMode || S.selected.size !== 1) return;
+    const key = [...S.selected][0];
+    if (key === 'win') { clearSelection(); refreshSelectionButtons(); return; }  // 已经是和牌张
+    const i = +key.split(':')[1];
+    const pick = S.standing[i]; if (!pick) return;
+    const oldWin = S.winTile;
+    // 把选中的立牌换成原和牌张（若无原和牌张则移除该槽），并设为新和牌张
+    if (oldWin) S.standing[i] = oldWin;
+    else        S.standing.splice(i, 1);
+    S.winTile = pick;
+    clearSelection();
+    _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
+    render();
+    showToast('已设为和牌张');
+  }
+  function actionSetMeld() {
+    if (!S.selectMode || (S.selected.size !== 3 && S.selected.size !== 4)) return;
+    const picks = collectSelectedTiles();
+    const tiles = picks.map(o => o.tile);
+    let meld = null;
+    if (tiles.length === 4) {
+      if (!tiles.every(t => t.code === tiles[0].code)) return;
+      meld = { type: 'kong', tile: tiles[0].code, tiles: [...tiles], concealed: false, promoted: false };
+    } else {
+      meld = tryFormMeld(tiles);
+      if (!meld) { showToast('无效副露：需要刻子/顺子/杠'); return; }
+    }
+    // 从立牌/和牌张移除选中的牌（从大到小删避免索引错位）
+    const winPicked = picks.some(o => o.key === 'win');
+    const standIdx = picks.filter(o => o.key.startsWith('standing:')).map(o => +o.key.split(':')[1]).sort((a, b) => b - a);
+    for (const i of standIdx) S.standing.splice(i, 1);
+    if (winPicked) S.winTile = null;
+    S.melds.push(meld);
+    clearSelection();
+    _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
+    render();
+    showToast(meld.type === 'kong' ? '已设为杠' : meld.type === 'pung' ? '已设为刻子' : '已设为顺子');
+  }
+
   function renderStanding() {
     dom.standingArea.innerHTML = '';
     const max = maxStanding();
@@ -378,7 +482,13 @@
       const t = S.standing[i];
       if (t) {
         const tEl = makeTileEl(t.code, t.isRed, 'md');
-        tEl.addEventListener('click', () => selectForReplace('standing', i, t));
+        if (S.selectMode) {
+          const key = 'standing:' + i;
+          if (S.selected.has(key)) tEl.classList.add('hc-selected');
+          attachSelectHandlers(tEl, key);
+        } else {
+          tEl.addEventListener('click', () => selectForReplace('standing', i, t));
+        }
         dom.standingArea.appendChild(tEl);
       } else {
         const isActive = S.replacing?.area === 'standing' && S.replacing?.index === i;
@@ -400,7 +510,12 @@
     dom.winArea.innerHTML = '';
     if (S.winTile) {
       const tEl = makeTileEl(S.winTile.code, S.winTile.isRed, 'md');
-      tEl.addEventListener('click', () => selectForReplace('win', 0, S.winTile));
+      if (S.selectMode) {
+        if (S.selected.has('win')) tEl.classList.add('hc-selected');
+        attachSelectHandlers(tEl, 'win');
+      } else {
+        tEl.addEventListener('click', () => selectForReplace('win', 0, S.winTile));
+      }
       dom.winArea.appendChild(tEl);
     } else if (S.replacing?.area === 'win') {
       const slot = makeTileRaw('X.svg', 'md');
@@ -1203,6 +1318,9 @@
     dom.result        = document.getElementById('hc-result');
     dom.calcBtn       = document.getElementById('hc-calc-btn');
     dom.uploadBtn     = document.getElementById('hc-upload-btn');
+    dom.selectMode    = document.getElementById('hc-select-mode');
+    dom.setMeldBtn    = document.getElementById('hc-set-meld');
+    dom.setWinBtn     = document.getElementById('hc-set-win');
     dom.modeBtns      = document.querySelectorAll('.hc-mode-btn');
 
     renderPicker();
@@ -1241,6 +1359,9 @@
       _lastHand   = null;
       _calcSig    = null;
       _uploaded   = false;
+      S.selectMode = false; clearSelection();
+      if (dom.selectMode) dom.selectMode.checked = false;
+      document.getElementById('hand-calc-page').classList.remove('hc-selecting');
       render();
       dom.result.innerHTML = '';
       dom.result.classList.add('hidden');
@@ -1390,6 +1511,9 @@
     document.getElementById('hc-prevalent').addEventListener('change',  e => { S.prevalentWind = +e.target.value; });
     document.getElementById('hc-seat').addEventListener('change',       e => { S.seatWind      = +e.target.value; });
     document.getElementById('hc-flowers').addEventListener('change',    e => { S.flowers       = +e.target.value; });
+    dom.selectMode?.addEventListener('change', e => setSelectMode(e.target.checked));
+    dom.setMeldBtn?.addEventListener('click',  actionSetMeld);
+    dom.setWinBtn?.addEventListener('click',   actionSetWin);
     setupRecognizer();
   }
 
@@ -1503,7 +1627,7 @@
       const tiles = keptCodes.map(recogSvgToTile).filter(Boolean);
       if (tiles.length === 0) return;
       const MAX = 13;
-      S.standing = tiles.slice(0, MAX); S.winTile = null; S.melds = []; S.buffer = [];
+      S.standing = tiles.slice(0, MAX); S.winTile = null; S.melds = []; S.buffer = []; clearSelection();
       let extra = 0;
       if (tiles.length > MAX) { S.winTile = tiles[MAX]; extra = tiles.length - MAX - 1; }
       _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
