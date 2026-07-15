@@ -1920,6 +1920,7 @@
     tilesEl.addEventListener('pointerdown', e => {
       const k = recogFindRT(e); if (k == null) return;
       e.preventDefault(); // prevent text selection / scroll
+      tilesEl.setPointerCapture(e.pointerId);
       recogDragMode = recogSel.has(k) ? 'remove' : 'add';
       if (recogDragMode === 'add') recogSel.add(k); else recogSel.delete(k);
       recogUpdateEditBtns();
@@ -1997,19 +1998,56 @@
     // 删除选中的牌
     recogDelBtn?.addEventListener('click', () => {
       if (recogSel.size === 0) return;
-      // Collect preds to remove from canvas before filtering
       const removePreds = new Set([...recogSel].map(i => lastOrdered[i]?.pred).filter(Boolean));
       preds = preds.filter(p => !removePreds.has(p));
+
+      // Build old→new index map (deleted indices disappear, others shift down)
+      const oldLen = lastOrdered.length;
+      const remap = new Array(oldLen).fill(-1);
+      let newIdx = 0;
+      for (let i = 0; i < oldLen; i++) {
+        if (!recogSel.has(i)) remap[i] = newIdx++;
+      }
+
       lastOrdered = lastOrdered.filter((_, i) => !recogSel.has(i));
-      lastGrouping = autoGroupRecognized(lastOrdered);
+
+      // Remap grouping without re-running auto-detection
+      const newConsumed = new Array(lastOrdered.length).fill(null);
+      const newGroups = [];
+      for (const g of lastGrouping.groups) {
+        if (!g) continue;
+        const remapped = g.idxs.map(k => remap[k]).filter(k => k >= 0);
+        if (remapped.length === 0) continue;
+        if (remapped.length < 3) {
+          // Group lost too many tiles to remain valid — dissolve it
+          remapped.forEach(k => { predColorMap.delete(lastOrdered[k]?.pred); });
+          continue;
+        }
+        const gi = newGroups.length;
+        remapped.forEach(k => { newConsumed[k] = { kind: 'meld', group: gi }; });
+        newGroups.push({ type: g.type, idxs: remapped, concealed: g.concealed });
+      }
+
+      let newWinIdx = null;
+      if (lastGrouping.winIdx != null && remap[lastGrouping.winIdx] >= 0) {
+        newWinIdx = remap[lastGrouping.winIdx];
+        newConsumed[newWinIdx] = { kind: 'win' };
+      }
+
+      const newWinCandidates = (lastGrouping.winCandidates || [])
+        .map(k => remap[k]).filter(k => k >= 0);
+
+      lastGrouping = { consumed: newConsumed, groups: newGroups, winIdx: newWinIdx, winCandidates: newWinCandidates };
+
+      // Rebuild predColorMap from surviving grouping
       recogSel.clear();
       predColorMap = new Map();
       lastOrdered.forEach((t, i) => {
-        const c = lastGrouping.consumed[i];
+        const c = newConsumed[i];
         let info = null;
         if (c && c.kind === 'meld') info = { color: RECOG_MELD_COLOR, dashed: false };
         else if (c && c.kind === 'win') info = { color: RECOG_WIN_COLOR, dashed: false };
-        else if (lastGrouping.winCandidates.includes(i)) info = { color: RECOG_CANDIDATE_COLOR, dashed: true };
+        else if (newWinCandidates.includes(i)) info = { color: RECOG_CANDIDATE_COLOR, dashed: true };
         if (info) predColorMap.set(t.pred, info);
       });
       drawCanvas(); renderTileList(); recogUpdateEditBtns();
