@@ -399,33 +399,31 @@
     tEl.dataset.selKey = key;
     tEl.addEventListener('click', e => e.preventDefault());
   }
-  // 委托到两个容器：滑动时被替换的元素也无所谓，我们从事件目标读 dataset.selKey
+  // 委托到两个容器：起点决定拖动是"加入"还是"取消"，沿路只做该方向的操作（不来回切换）
   function initSelectPointerDelegation() {
     const areas = [dom.standingArea, dom.winArea];
-    let dragged = false;                    // 是否发生过 pointermove
-    let startedInSel = false;               // 起点在选牌模式下的牌上
-    const keyFromEvent = e => {
-      const el = e.target.closest('.hc-tile');
-      return el && el.dataset.selKey ? el.dataset.selKey : null;
-    };
+    let mode = null;   // 'add' | 'remove' | null
     for (const area of areas) {
       area.addEventListener('pointerdown', e => {
         if (!S.selectMode) return;
-        const k = keyFromEvent(e); if (!k) return;
-        startedInSel = true; dragged = false;
+        const tile = e.target.closest('.hc-tile');
+        const k = tile && tile.dataset.selKey; if (!k) return;
+        // 起点已选中 → 后续拖动为「取消」；起点未选中 → 「加入」
+        mode = S.selected.has(k) ? 'remove' : 'add';
         toggleSelected(k); updateSelectionUI();
       });
       area.addEventListener('pointermove', e => {
-        if (!S.selectMode || !startedInSel) return;
+        if (!S.selectMode || !mode) return;
         if (e.buttons !== 1 && e.pointerType !== 'touch') return;
         // 触摸时 pointerenter 不可靠，用 elementFromPoint 兜底
         const el = document.elementFromPoint(e.clientX, e.clientY);
         const tile = el && el.closest && el.closest('.hc-tile');
-        const k = tile && tile.dataset.selKey;
-        if (k && !S.selected.has(k)) { dragged = true; S.selected.add(k); updateSelectionUI(); }
+        const k = tile && tile.dataset.selKey; if (!k) return;
+        if (mode === 'add' && !S.selected.has(k)) { S.selected.add(k); updateSelectionUI(); }
+        else if (mode === 'remove' && S.selected.has(k)) { S.selected.delete(k); updateSelectionUI(); }
       });
-      area.addEventListener('pointerup', () => { startedInSel = false; dragged = false; });
-      area.addEventListener('pointercancel', () => { startedInSel = false; dragged = false; });
+      area.addEventListener('pointerup',     () => { mode = null; });
+      area.addEventListener('pointercancel', () => { mode = null; });
     }
   }
   function refreshSelectionButtons() {
@@ -433,10 +431,15 @@
     if (dom.setWinBtn)  dom.setWinBtn.disabled  = !(S.selectMode && n === 1);
     if (dom.setMeldBtn) {
       let ok = false;
-      if (S.selectMode && (n === 3 || n === 4)) {
+      if (S.selectMode && n >= 3) {
         const tiles = collectSelectedTiles().map(o => o.tile);
-        if (n === 3) ok = !!tryFormMeld(tiles);
-        else         ok = tiles.every(t => t.code === tiles[0].code);   // 4 张 = 杠
+        if (n === 4 && tiles.every(t => t.code === tiles[0].code)) ok = true;   // 杠
+        else if (n % 3 === 0) {
+          ok = true;
+          for (let i = 0; i < tiles.length && ok; i += 3) {
+            if (!tryFormMeld(tiles.slice(i, i + 3))) ok = false;
+          }
+        }
       }
       dom.setMeldBtn.disabled = !ok;
     }
@@ -474,23 +477,31 @@
     showToast('已设为和牌张');
   }
   function actionSetMeld() {
-    if (!S.selectMode || (S.selected.size !== 3 && S.selected.size !== 4)) return;
+    if (!S.selectMode) return;
     const picks = collectSelectedTiles();
-    const tiles = picks.map(o => o.tile);
-    let meld = null;
-    if (tiles.length === 4) {
-      if (!tiles.every(t => t.code === tiles[0].code)) return;
-      meld = { type: 'kong', tile: tiles[0].code, tiles: [...tiles], concealed: false, promoted: false };
-    } else {
-      meld = tryFormMeld(tiles);
-      if (!meld) { showToast('无效副露：需要刻子/顺子/杠'); return; }
-    }
-    // 从立牌/和牌张移除选中的牌（从大到小删避免索引错位）
+    if (picks.length < 3) return;
     const winPicked = picks.some(o => o.key === 'win');
+
+    // 4 张同码 = 杠，仅在恰好选中 4 张时启用（避免和"两个刻子共 6 张"歧义）
+    let melds = [];
+    if (picks.length === 4 && picks.every(o => o.tile.code === picks[0].tile.code)) {
+      melds = [{ type: 'kong', tile: picks[0].tile.code, tiles: picks.map(o => ({ ...o.tile })), concealed: false, promoted: false }];
+    } else {
+      // 从左到右按 3 张一组切分：能成刻/顺就加入，遇到不合法立即中断
+      if (picks.length % 3 !== 0) { showToast('副露需要 3 张的倍数（或 4 张同牌）'); return; }
+      for (let i = 0; i < picks.length; i += 3) {
+        const group = picks.slice(i, i + 3).map(o => o.tile);
+        const meld = tryFormMeld(group);
+        if (!meld) { showToast(`第 ${i / 3 + 1} 组不成刻/顺，已中断`); return; }
+        melds.push(meld);
+      }
+    }
+
+    // 从立牌/和牌张一次性移除全部选中的牌（从大到小删避免索引错位）
     const standIdx = picks.filter(o => o.key.startsWith('standing:')).map(o => +o.key.split(':')[1]).sort((a, b) => b - a);
-    for (const i of standIdx) S.standing.splice(i, 1);
+    for (const idx of standIdx) S.standing.splice(idx, 1);
     if (winPicked) S.winTile = null;
-    S.melds.push(meld);
+    S.melds.push(...melds);
     // 若和牌张被摘走，且立牌超过新上限，用立牌最右一张递补为和牌张
     if (winPicked && !S.winTile && S.standing.length > maxStanding()) {
       S.winTile = S.standing.pop();
@@ -498,7 +509,8 @@
     clearSelection();
     _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
     render();
-    showToast(meld.type === 'kong' ? '已设为杠' : meld.type === 'pung' ? '已设为刻子' : '已设为顺子');
+    const types = melds.map(m => m.type === 'kong' ? '杠' : m.type === 'pung' ? '刻子' : '顺子').join('、');
+    showToast(melds.length === 1 ? `已设为${types}` : `已添加 ${melds.length} 副（${types}）`);
   }
 
   function renderStanding() {
