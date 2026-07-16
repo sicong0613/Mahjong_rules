@@ -1045,6 +1045,8 @@ body.calc-mode .fan-card:not(.expanded) { cursor: pointer; }
 .rt-group-dismiss:hover { background: #b71c1c; }
 /* 候选和牌张（未锁定，仍作为独立 .rt 渲染） */
 .hc-recog-tiles .rt.rt-candidate { box-shadow: inset 0 0 0 2px #c0a000; outline: 2px dashed #c0a000; outline-offset: 1px; }
+/* 选中态优先于候选态显示（否则候选虚线框会盖掉选中高亮） */
+.hc-recog-tiles .rt.rt-candidate.rt-sel { outline: 2.5px solid var(--accent); outline-offset: -1px; box-shadow: inset 0 0 0 9999px rgba(139,26,26,.18); }
 .hc-recog-actions { display: flex; gap: 8px; align-items: stretch; }
 .hc-recog-actions .hc-calc-btn { flex: 1; }
 .hc-recog-action-btn {
