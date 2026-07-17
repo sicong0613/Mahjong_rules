@@ -95,6 +95,17 @@
     const COMMON_HANDS_HIDE = new Set(['宝牌']);   // don't surface Dora
     const zhOf = f => f.nameZh || f.name;
 
+    // Simplified card blurbs (matched by Chinese name, mirrors the Chinese guide;
+    // the full description still lives in the reference table).
+    const COMMON_HAND_DESC = {
+      '立直': 'With a closed hand at tenpai, turn this discard sideways to declare riichi. See <a href="#s3" style="color:var(--accent);">3. Chii, Pon, Kong, Riichi</a> on this page.',
+    };
+    function applyCommonHandDesc(el, zhName, fallback) {
+      const ov = COMMON_HAND_DESC[zhName];
+      if (ov != null) el.innerHTML = ov;
+      else el.textContent = fallback || '';
+    }
+
     const TILE_LABELS = {
       '1m':'1 character','2m':'2 characters','3m':'3 characters','4m':'4 characters','5m':'5 characters','6m':'6 characters','7m':'7 characters','8m':'8 characters','9m':'9 characters',
       '1p':'1 dot','2p':'2 dots','3p':'3 dots','4p':'4 dots','5p':'5 dots','6p':'6 dots','7p':'7 dots','8p':'8 dots','9p':'9 dots',
@@ -200,7 +211,7 @@
           const name = document.createElement('span'); name.className = 'common-hand-name'; name.textContent = f.name;
           const pct = document.createElement('span'); pct.className = 'common-hand-pct';
           header.append(badge, name, pct); card.appendChild(header);
-          const desc = document.createElement('div'); desc.className = 'common-hand-desc'; desc.textContent = f.desc || '';
+          const desc = document.createElement('div'); desc.className = 'common-hand-desc'; applyCommonHandDesc(desc, zhOf(f), f.desc);
           card.appendChild(desc);
           if (f.example) { const row = document.createElement('div'); row.className = 'common-hand-tiles'; renderTileStr(f.example, row); card.appendChild(row); }
           grid.appendChild(card);
@@ -268,7 +279,7 @@
           const pct = document.createElement('span'); pct.className = 'common-hand-pct';
           header.append(badge, nameEl, pct); card.appendChild(header);
           if (f) card.dataset.fanTier = f.fan;
-          const desc = document.createElement('div'); desc.className = 'common-hand-desc'; desc.textContent = f?.desc ?? '';
+          const desc = document.createElement('div'); desc.className = 'common-hand-desc'; applyCommonHandDesc(desc, name, f?.desc ?? '');
           card.appendChild(desc);
           const tileStr = f?.example ?? '';
           if (tileStr) { const tiles = document.createElement('div'); tiles.className = 'common-hand-tiles'; renderTileStr(tileStr, tiles); card.appendChild(tiles); }
