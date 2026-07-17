@@ -1011,7 +1011,7 @@
 
   // ─── 纯全带幺九检测 ───────────────────────────────────────────
   // WASM 检测到全带幺（每组含幺九或字牌）且整副牌无字牌 → 升格纯全带幺九
-  // 门清 24番，有副露 16番
+  // 固定 24番（有无副露都不降番）
   function detectChunQuanDaiYaoJiu(result) {
     if (!result.fans.some(f => f.name === '全带幺')) return result;
 
@@ -1022,10 +1022,9 @@
     ];
     if (allTiles.some(t => t && (t.code >> 4) === 4)) return result; // 有字牌，不成立
 
-    // 有公开副露降至16番（暗杠不算副露，仍按门清24番）；此函数在 applyFansJsValues 之后运行，需自行计算 total
-    const fanVal = hasOpenMeld() ? 16 : 24;
+    // 纯全带幺九固定 24 番（有无副露都不降番）；此函数在 applyFansJsValues 之后运行，需自行计算 total
     const fans = result.fans.filter(f => f.name !== '全带幺' && f.name !== '无字');
-    fans.push({ fan: fanVal, count: 1, value: fanVal, name: '纯全带幺九' });
+    fans.push({ fan: 24, count: 1, value: 24, name: '纯全带幺九' });
     return { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
   }
 

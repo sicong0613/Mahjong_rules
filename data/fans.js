@@ -356,7 +356,7 @@ const FANS_DATA = [
     example: "1m 2m 3m | 1s 2s 3s | 2p 2p 2p | 1p 1p 1p | 3p 3p",},
 
   { id: "chun_quan_dai_yao_jiu", name: "纯全带幺九", nameEn: "Pure Terminals in All Sets", fan: 24,
-    desc: "33332 胡牌模式下，所有面子和雀头都包含幺九牌。有副露时降至 16 番。",
+    desc: "33332 胡牌模式下，所有面子和雀头都包含幺九牌。",
     excludes: ["无字"],
     handTypes: ["33332"], meldAllowed: true,
     tags: ["幺九", "无字"], source: "广港日",
