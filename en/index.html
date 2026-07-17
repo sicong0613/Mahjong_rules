@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Mahjong scoring-pattern quick reference and hand calculator">
+  <base href="../">
+  <title>Mahjong Scoring Reference</title>
+  <link rel="stylesheet" href="style.css?v=12">
+</head>
+<body>
+
+  <header id="site-header">
+    <div class="header-inner">
+      <h1>Mahjong Scoring Reference</h1>
+      <input type="search" id="search-input" placeholder="Search patterns..." autocomplete="off" spellcheck="false">
+      <a href="en/instruction.html" class="btn-outline" title="Beginner guide">Guide</a>
+      <button id="hand-calc-btn" class="btn-outline" title="Hand calculator">Calc</button>
+    </div>
+  </header>
+
+  <div id="filter-bar">
+    <div class="filter-row" id="fan-filter-row">
+      <span class="filter-label">Fan</span>
+      <div class="chip-group" id="fan-chips"></div>
+    </div>
+    <div class="filter-row" id="tag-filter-row">
+      <span class="filter-label">Tags</span>
+      <div class="chip-group" id="tag-chips"></div>
+    </div>
+    <div class="filter-row filter-actions">
+      <button id="dlc-toggle" class="btn-outline btn-sm">Show DLC</button>
+      <button id="lang-toggle" class="btn-outline btn-sm">中文</button>
+      <button id="clear-filters" class="btn-ghost btn-sm">Clear filters</button>
+    </div>
+  </div>
+
+  <div id="results-summary"></div>
+
+  <main id="fan-list"></main>
+
+  <div id="calc-bar" class="hidden">
+    <div class="calc-bar-inner">
+      <span>Selected <strong id="calc-count">0</strong></span>
+      <span class="calc-sep">|</span>
+      <span>Total <strong id="calc-total">0</strong> fan</span>
+      <button id="calc-clear" class="btn-ghost btn-sm">Clear</button>
+      <button id="calc-close" class="btn-outline btn-sm">Exit</button>
+    </div>
+  </div>
+
+  <div id="hand-calc-page" class="hc-page hidden">
+    <div class="hc-topbar">
+      <button id="hc-back" class="hc-btn-ghost" data-i18n="← 返回">← Back</button>
+      <span class="hc-title" data-i18n="手牌计番">Hand Calc</span>
+      <button id="hc-clear-all" class="hc-btn-ghost" data-i18n="清空">Clear</button>
+    </div>
+
+    <div class="hc-content">
+      <div class="hc-section">
+        <div class="hc-section-label"><span data-i18n="立牌">Standing</span> <span id="hc-standing-count">0/13</span></div>
+        <div id="hc-standing-area" class="hc-tile-row"></div>
+      </div>
+
+      <div class="hc-section hc-win-row">
+        <div class="hc-section-label"><span data-i18n="和牌张">Winning Tile</span></div>
+        <div id="hc-win-area" class="hc-tile-row"></div>
+        <div class="hc-select-tools">
+          <label class="hc-select-toggle"><input type="checkbox" id="hc-select-mode"> Select</label>
+          <button id="hc-set-meld" class="hc-btn-xs" disabled title="Make selected 3-4 tiles into a meld">Set Meld</button>
+          <button id="hc-set-win" class="hc-btn-xs" disabled title="Set the selected tile as the winning tile">Win Tile</button>
+          <button id="hc-del-sel" class="hc-btn-xs hc-btn-danger" disabled title="Delete selected tiles">Delete</button>
+        </div>
+      </div>
+
+      <div class="hc-section">
+        <div class="hc-section-label" data-i18n="副露">Melds</div>
+        <div id="hc-meld-area" class="hc-meld-row"></div>
+      </div>
+
+      <div class="hc-section hidden" id="hc-buffer-section">
+        <div class="hc-section-label"><span id="hc-buffer-label">Grouping (0/3)</span> <button id="hc-buffer-clear" class="hc-btn-ghost hc-btn-xs" data-i18n="取消">Cancel</button></div>
+        <div id="hc-buffer-area" class="hc-tile-row"></div>
+      </div>
+
+      <div class="hc-section hc-settings">
+        <label class="hc-check"><input type="checkbox" id="hc-self-drawn"> <span data-i18n="自摸">Self Draw</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-dealer-win"> <span data-i18n="庄赢">Dealer</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-last-tile"> <span data-i18n="和绝张">Last Tile</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-kong-win"> <span data-i18n="杠上开花">Kong Draw</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-gang-kai-chong"> <span data-i18n="杠上开铳">Kan Discard Win</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-qiang-gang"> <span data-i18n="抢杠">Rob Kan</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-wall-last"> <span data-i18n="海底捞月">Last Draw</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-river-last"> <span data-i18n="河底捞鱼">Last Discard</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-fan-tian_he"> <span data-i18n="天和">Heavenly Hand</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-fan-di_he"> <span data-i18n="地和">Earthly Hand</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-fan-ren_he"> <span data-i18n="人和">Hand of Man</span></label>
+        <label class="hc-check"><input type="checkbox" id="hc-liuju-manguan"> <span data-i18n="流局满贯">Great Exhaustive Draw</span></label>
+      </div>
+
+      <div class="hc-section hc-winds">
+        <label><span data-i18n="圈风">Round Wind</span> <select id="hc-prevalent"><option value="" selected data-i18n="—">—</option><option value="0" data-i18n="东">East</option><option value="1" data-i18n="南">South</option><option value="2" data-i18n="西">West</option><option value="3" data-i18n="北">North</option></select></label>
+        <label><span data-i18n="门风">Seat Wind</span> <select id="hc-seat"><option value="" selected data-i18n="—">—</option><option value="0" data-i18n="东">East</option><option value="1" data-i18n="南">South</option><option value="2" data-i18n="西">West</option><option value="3" data-i18n="北">North</option></select></label>
+        <label><span data-i18n="花牌">Flowers</span> <input type="number" id="hc-flowers" min="0" max="8" value="0"></label>
+      </div>
+
+      <div class="hc-section hc-dora-row">
+        <label class="hc-check">
+          <input type="checkbox" id="hc-dora">
+          <span data-i18n="宝牌">Dora</span>
+          <select id="hc-dora-count" disabled>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+          </select>
+          <span data-i18n="张">tiles</span>
+        </label>
+      </div>
+
+      <div class="hc-section hc-riichi-row">
+        <label class="hc-check">
+          <input type="checkbox" id="hc-riichi">
+          <select id="hc-riichi-type" disabled>
+            <option value="riichi" data-i18n="立直">Riichi</option>
+            <option value="double_riichi" data-i18n="二立直">Double Riichi</option>
+            <option value="open_riichi" data-i18n="明牌立直">Open Riichi</option>
+          </select>
+        </label>
+        <label class="hc-check">
+          <input type="checkbox" id="hc-ippatsu" disabled>
+          <span data-i18n="一发">Ippatsu</span>
+        </label>
+      </div>
+
+      <div class="hc-section hc-calc-row">
+        <button id="hc-calc-btn" class="hc-calc-btn" disabled data-i18n="计 算">Calculate</button>
+        <button id="hc-upload-btn" class="hc-upload-btn" disabled title="Calculate and upload fan data">Upload</button>
+        <button id="hc-recognize-btn" class="hc-recog-btn" title="Recognize tiles from a photo">📷</button>
+        <button id="hc-kb-toggle" class="hc-kb-btn" title="Collapse keyboard">⌨</button>
+      </div>
+
+      <div id="hc-result" class="hc-result hidden"></div>
+    </div>
+
+    <div class="hc-bottom">
+      <div class="hc-mode-row">
+        <button class="hc-mode-btn active" data-mode="standing" data-i18n="立牌">Standing</button>
+        <button class="hc-mode-btn" data-mode="meld" data-i18n="吃/碰">Chii/Pon</button>
+        <button class="hc-mode-btn" data-mode="minggang" data-i18n="明杠">Open Kong</button>
+        <button class="hc-mode-btn" data-mode="angang" data-i18n="暗杠">Concealed Kong</button>
+      </div>
+      <div id="hc-picker" class="hc-picker"></div>
+    </div>
+
+    <div id="hc-recog-modal" class="hc-recog-overlay hidden">
+      <div class="hc-recog-box">
+        <div class="hc-recog-head">
+          <strong>Photo Recognition</strong>
+          <button id="hc-recog-close" class="hc-btn-ghost">x</button>
+        </div>
+        <div class="hc-recog-bar">
+          <input id="hc-recog-file" type="file" accept="image/*">
+          <button id="hc-recog-roi" class="hc-recog-mini" hidden>Select hand area</button>
+          <button id="hc-recog-clear" class="hc-recog-mini" hidden>Clear area</button>
+        </div>
+        <p class="hc-recog-hint">Upload a full photo, then draw a rectangle around your hand. Rotated tiles can be used to identify open melds or the winning tile.</p>
+        <div id="hc-recog-msg" class="hc-recog-msg"></div>
+        <canvas id="hc-recog-canvas" hidden></canvas>
+        <div id="hc-recog-summary" class="hc-recog-summary"></div>
+        <div id="hc-recog-tiles" class="hc-recog-tiles"></div>
+        <div class="hc-recog-actions">
+          <button id="hc-recog-fill-manual" class="hc-recog-mini" disabled title="Fill only standing tiles">Fill Standing</button>
+          <button id="hc-recog-fill" class="hc-calc-btn" disabled>Accept</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="site-footer">
+    <p>Scoring engine based on <a href="https://github.com/summerinsects/mahjong-algorithm" target="_blank" rel="noopener">Jeff Wang's open-source library</a> (MIT License)</p>
+    <p>Pattern data and UI organized by <a href="https://github.com/sicong0613/Mahjong_rules" target="_blank" rel="noopener">sicong0613</a> with Claude (Anthropic)</p>
+  </footer>
+
+  <script src="data/glossary_en.js?v=1"></script>
+  <script src="data/fans.js?v=3"></script>
+  <script src="data/fans_en.js?v=1"></script>
+  <script src="data/wasm_name_map.js?v=3"></script>
+  <script src="data/fan_calculator.js?v=3"></script>
+  <script src="calculator.js?v=3"></script>
+  <script src="calc-ui.js?v=18"></script>
+  <script src="script.js?v=4"></script>
+</body>
+</html>

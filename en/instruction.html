@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Beginner guide to mahjong tiles, calls, winning hands, and scoring">
+  <base href="../">
+  <title>Beginner Guide - Mahjong Scoring Reference</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { padding-top: 88px; padding-bottom: 40px; }
+    #instr-header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 48px;
+      background: var(--accent); color: #fff; display: flex; align-items: center;
+      gap: 12px; padding: 0 16px; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    #instr-header a.back-link {
+      color: rgba(255,255,255,.9); text-decoration: none; font-size: .85rem;
+      padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.45);
+      white-space: nowrap;
+    }
+    #instr-header .instr-title { font-weight: 700; font-size: .95rem; }
+    #instr-toc {
+      position: fixed; top: 48px; left: 0; right: 0; z-index: 90;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 8px 14px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+    }
+    #instr-toc::-webkit-scrollbar { display: none; }
+    #instr-toc a {
+      white-space: nowrap; font-size: .73rem; color: var(--text-muted);
+      text-decoration: none; padding: 3px 10px; border-radius: 12px;
+      border: 1px solid var(--border); flex-shrink: 0;
+    }
+    #instr-main { max-width: 860px; margin: 0 auto; padding: 24px 14px 0; }
+    .instr-section { margin-bottom: 40px; }
+    .instr-section h2 {
+      font-size: 1.1rem; font-weight: 800; color: var(--accent);
+      margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid var(--border);
+      scroll-margin-top: 96px;
+    }
+    .instr-section h3 { font-size: .9rem; font-weight: 700; margin: 14px 0 6px; }
+    .instr-section p, .instr-section ul, .instr-section ol {
+      font-size: .855rem; line-height: 1.75; color: #3a3028; margin-bottom: 6px;
+    }
+    .tile-suites { display: flex; flex-wrap: wrap; gap: 14px 20px; margin: 12px 0; justify-content: center; }
+    .tile-suite-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .tile-suite-row, .hand-tiles, .concept-card-tiles, .common-hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+    .tile-suite-label, .hand-label, .concept-card-note, .common-hand-desc { font-size: .75rem; color: var(--text-muted); }
+    .tile-sm { width: 26px; height: 34px; padding: 1px; box-sizing: border-box; border-radius: 3px; object-fit: contain; display: block; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+    .hand-example, .concept-card, .common-hand-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin: 8px 0; }
+    .concept-grid, .common-hands-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 12px; }
+    .concept-card-label, .common-hand-name { font-weight: 700; color: var(--accent); }
+    .info-box, .tip-box, .warning-box, .collapse-box { border-radius: 0 6px 6px 0; padding: 8px 12px; margin: 10px 0; font-size: .82rem; line-height: 1.65; }
+    .info-box { background: #e3f2fd; border-left: 3px solid #1565c0; color: #1a3a5c; }
+    .tip-box, .collapse-box { background: #fffbf0; border-left: 3px solid #f0c040; color: #5a4a20; }
+    .warning-box { background: #ffebee; border-left: 3px solid #b71c1c; color: #5a1a1a; }
+    .step-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+    .step-list li { display: flex; gap: 10px; align-items: flex-start; }
+    .step-num { flex-shrink: 0; width: 22px; height: 22px; background: var(--accent); color: #fff; border-radius: 50%; font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <header id="instr-header">
+    <a href="en/" class="back-link">← Back to reference</a>
+    <span class="instr-title">Beginner Guide</span>
+  </header>
+
+  <nav id="instr-toc"></nav>
+  <main id="instr-main"></main>
+
+  <footer id="site-footer">
+    <p>Scoring engine based on <a href="https://github.com/summerinsects/mahjong-algorithm" target="_blank" rel="noopener">Jeff Wang's open-source library</a> (MIT License)</p>
+    <p>Pattern data and UI organized by <a href="https://github.com/sicong0613/Mahjong_rules" target="_blank" rel="noopener">sicong0613</a> with Claude (Anthropic)</p>
+  </footer>
+
+  <script src="data/glossary_en.js?v=1"></script>
+  <script src="data/fans.js?v=3"></script>
+  <script src="data/fans_en.js?v=1"></script>
+  <script src="data/instruction_en.js?v=1"></script>
+  <script>
+    const TILE_LABELS = {
+      '1m':'1 character','2m':'2 characters','3m':'3 characters','4m':'4 characters','5m':'5 characters','6m':'6 characters','7m':'7 characters','8m':'8 characters','9m':'9 characters',
+      '1p':'1 dot','2p':'2 dots','3p':'3 dots','4p':'4 dots','5p':'5 dots','6p':'6 dots','7p':'7 dots','8p':'8 dots','9p':'9 dots',
+      '1s':'1 bamboo','2s':'2 bamboo','3s':'3 bamboo','4s':'4 bamboo','5s':'5 bamboo','6s':'6 bamboo','7s':'7 bamboo','8s':'8 bamboo','9s':'9 bamboo',
+      '0m':'red five characters','0p':'red five dots','0s':'red five bamboo','E':'East','S':'South','W':'West','N':'North','Z':'Red','F':'Green','B':'White','X':'Back',
+    };
+    function makeTile(code) {
+      const img = document.createElement('img');
+      img.className = 'tile-sm';
+      img.src = `img/tiles/${code}.svg`;
+      img.alt = TILE_LABELS[code] || code;
+      return img;
+    }
+    function renderTileStr(str, container) {
+      str.trim().split(/\s+/).forEach(tok => {
+        if (tok === '|') { const sep = document.createElement('span'); sep.style.width = '8px'; container.appendChild(sep); return; }
+        container.appendChild(makeTile(tok.replace(/^>/, '')));
+      });
+    }
+    function renderBlock(block) {
+      if (block.type === 'p' || block.type === 'info' || block.type === 'tip' || block.type === 'warning' || block.type === 'collapse') {
+        const el = document.createElement(block.type === 'p' ? 'p' : 'div');
+        if (block.type !== 'p') el.className = `${block.type}-box`;
+        el.innerHTML = block.title ? `<strong>${block.title}</strong><br>${block.text}` : block.text;
+        return el;
+      }
+      if (block.type === 'h3') { const el = document.createElement('h3'); el.textContent = block.text; return el; }
+      if (block.type === 'ul') {
+        const el = document.createElement('ul');
+        block.items.forEach(item => { const li = document.createElement('li'); li.innerHTML = item; el.appendChild(li); });
+        return el;
+      }
+      if (block.type === 'steps') {
+        const el = document.createElement('ol'); el.className = 'step-list';
+        block.items.forEach((item, i) => {
+          const li = document.createElement('li');
+          li.innerHTML = `<div class="step-num">${i + 1}</div><div>${item}</div>`;
+          el.appendChild(li);
+        });
+        return el;
+      }
+      if (block.type === 'tile-suites') {
+        const wrap = document.createElement('div'); wrap.className = 'tile-suites';
+        block.groups.forEach(g => {
+          if (g.break) { const br = document.createElement('div'); br.style.cssText = 'width:100%;height:0'; wrap.appendChild(br); return; }
+          const group = document.createElement('div'); group.className = 'tile-suite-group';
+          const row = document.createElement('div'); row.className = 'tile-suite-row'; renderTileStr(g.tiles, row);
+          const label = document.createElement('div'); label.className = 'tile-suite-label'; label.textContent = g.label;
+          group.append(row, label); wrap.appendChild(group);
+        });
+        return wrap;
+      }
+      if (block.type === 'hand') {
+        const box = document.createElement('div'); box.className = 'hand-example';
+        box.innerHTML = `<div class="hand-label">${block.label}</div>`;
+        const row = document.createElement('div'); row.className = 'hand-tiles'; renderTileStr(block.tiles, row);
+        box.appendChild(row); return box;
+      }
+      if (block.type === 'concept-grid') {
+        const grid = document.createElement('div'); grid.className = 'concept-grid';
+        block.items.forEach(item => {
+          const card = document.createElement('div'); card.className = 'concept-card';
+          card.innerHTML = `<div class="concept-card-label">${item.label}</div>`;
+          const row = document.createElement('div'); row.className = 'concept-card-tiles'; renderTileStr(item.tiles, row);
+          const note = document.createElement('div'); note.className = 'concept-card-note'; note.textContent = item.note;
+          card.append(row, note); grid.appendChild(card);
+        });
+        return grid;
+      }
+      if (block.type === 'common-hands') {
+        const grid = document.createElement('div'); grid.className = 'common-hands-grid';
+        block.items.forEach(item => {
+          const f = item.id ? FANS_DATA.find(x => x.id === item.id) : null;
+          const card = document.createElement('div'); card.className = 'common-hand-card';
+          const name = item.groupName || f?.name || '';
+          card.innerHTML = `<div><span class="fan-badge badge-${f?.fan || 2}">${f?.fan || 2}</span> <span class="common-hand-name">${name}</span></div><div class="common-hand-desc">${f?.desc || 'Common value-honor patterns.'}</div>`;
+          if (f?.example) { const row = document.createElement('div'); row.className = 'common-hand-tiles'; renderTileStr(f.example, row); card.appendChild(row); }
+          grid.appendChild(card);
+        });
+        return grid;
+      }
+      return null;
+    }
+    const toc = document.getElementById('instr-toc');
+    const main = document.getElementById('instr-main');
+    INSTRUCTION_DATA.forEach(sec => {
+      const a = document.createElement('a'); a.href = `#${sec.id}`; a.textContent = sec.title; toc.appendChild(a);
+      const section = document.createElement('section'); section.className = 'instr-section'; section.id = sec.id;
+      const h2 = document.createElement('h2'); h2.textContent = sec.title; section.appendChild(h2);
+      sec.blocks.forEach(block => { const el = renderBlock(block); if (el) section.appendChild(el); });
+      main.appendChild(section);
+    });
+  </script>
+</body>
+</html>

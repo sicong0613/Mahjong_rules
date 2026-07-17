@@ -1,3 +1,63 @@
+const IS_EN_PAGE = /\/en(?:\/|$)/.test(window.location.pathname);
+
+const UI_TEXT = {
+  zh: {
+    showDlc: '显示 DLC',
+    hideDlc: '隐藏 DLC',
+    clearFilters: '清除筛选',
+    noResults: '没有符合条件的番种',
+    total: n => `共 ${n} 种番种`,
+    filtered: (n, total) => `筛选结果：${n} / ${total} 种`,
+    fanSuffix: fan => `${fan}番`,
+    countSuffix: n => `${n} 种`,
+    conditions: '条件',
+    excludes: '不计',
+    handType: '牌型',
+    meld: '副露',
+    source: '来源',
+    allowed: '允许',
+    disallowedClosed: '不允许（必须门清）',
+    includeFan: fan => `计入 ${fan === 0 ? '立直' : fan + ' 番'}`,
+    river: '牌河',
+    wait: '听牌',
+    viewFull: '→ 查看完整',
+    backOrigin: '← 回到原条目',
+    calcExit: '退出计番',
+    calcEnter: '计番',
+    langButton: 'Eng',
+  },
+  en: {
+    showDlc: 'Show DLC',
+    hideDlc: 'Hide DLC',
+    clearFilters: 'Clear filters',
+    noResults: 'No scoring patterns match these filters',
+    total: n => `${n} scoring patterns`,
+    filtered: (n, total) => `Showing ${n} of ${total}`,
+    fanSuffix: fan => `${fan} fan`,
+    countSuffix: n => `${n} items`,
+    conditions: 'Conditions',
+    excludes: 'Excludes',
+    handType: 'Hand type',
+    meld: 'Melds',
+    source: 'Source',
+    allowed: 'Allowed',
+    disallowedClosed: 'Closed only',
+    includeFan: fan => `Include ${fan} fan`,
+    river: 'Discards',
+    wait: 'Waits',
+    viewFull: '→ View details',
+    backOrigin: '← Back',
+    calcExit: 'Exit calc',
+    calcEnter: 'Calc',
+    langButton: '中文',
+  },
+};
+
+function t(key, ...args) {
+  const value = UI_TEXT[state?.lang || (IS_EN_PAGE ? 'en' : 'zh')][key];
+  return typeof value === 'function' ? value(...args) : value;
+}
+
 /* ── 状态 ───────────────────────────────────────────── */
 const state = {
   search:       '',
@@ -6,7 +66,7 @@ const state = {
   calcMode:     false,
   selected:     new Set(),   // 计番模式中已勾选的 id
   showDlc:      false,
-  lang:         'zh',        // 'zh' | 'en'
+  lang:         IS_EN_PAGE ? 'en' : 'zh',        // 'zh' | 'en'
   jumpOriginId: null,        // 跳转前的来源卡片 id
 };
 
@@ -22,9 +82,11 @@ const $searchInput= document.getElementById('search-input');
 
 /* ── 初始化 ─────────────────────────────────────────── */
 function init() {
+  document.documentElement.dataset.lang = state.lang;
   renderFilterChips();
   renderAll();
   bindEvents();
+  updateCalcI18n();
   const hash = window.location.hash.slice(1);
   if (hash) scrollToFanCard(hash);
 }
@@ -47,17 +109,12 @@ function bindEvents() {
   document.getElementById('dlc-toggle').addEventListener('click', () => {
     state.showDlc = !state.showDlc;
     document.getElementById('dlc-toggle').textContent =
-      state.showDlc ? '隐藏 DLC' : '显示 DLC';
+      state.showDlc ? t('hideDlc') : t('showDlc');
     renderAll();
   });
 
   document.getElementById('lang-toggle').addEventListener('click', () => {
-    state.lang = state.lang === 'zh' ? 'en' : 'zh';
-    document.getElementById('lang-toggle').textContent =
-      state.lang === 'zh' ? 'Eng' : '中文';
-    document.documentElement.dataset.lang = state.lang;
-    renderAll();
-    updateCalcI18n();
+    window.location.href = IS_EN_PAGE ? '../index.html' : 'en/';
   });
 
   document.getElementById('clear-filters').addEventListener('click', () => {
@@ -92,8 +149,8 @@ function renderFilterChips() {
     const btn = document.createElement('button');
     btn.className = `chip fan-chip`;
     btn.dataset.fan = fan;
-    btn.textContent = fan === 0 ? '立直' : `${fan}番`;
-    if (label) btn.textContent += ` ${label}`;
+    btn.textContent = fan === 0 && label ? label : t('fanSuffix', fan);
+    if (label && fan !== 0) btn.textContent += ` ${label}`;
     btn.addEventListener('click', () => {
       state.fanFilter = state.fanFilter === fan ? null : fan;
       document.querySelectorAll('.fan-chip').forEach(c => c.classList.remove('active'));
@@ -148,15 +205,15 @@ function renderAll() {
   $fanList.innerHTML = '';
 
   if (filtered.length === 0) {
-    $fanList.innerHTML = '<div class="empty-state">没有符合条件的番种</div>';
+    $fanList.innerHTML = `<div class="empty-state">${t('noResults')}</div>`;
     $summary.textContent = '';
     return;
   }
 
   const total = FANS_DATA.filter(f => !f.dlc || state.showDlc).length;
   $summary.textContent = filtered.length === total
-    ? `共 ${total} 种番种`
-    : `筛选结果：${filtered.length} / ${total} 种`;
+    ? t('total', total)
+    : t('filtered', filtered.length, total);
 
   // 按番数分组
   const grouped = new Map();
@@ -177,8 +234,8 @@ function renderAll() {
     header.className = 'tier-header';
     header.innerHTML = `
       <span class="tier-fan-badge badge-${fan}">${fan}</span>
-      <span class="tier-label">${label || (fan + ' 番')}</span>
-      <span class="tier-count">${items.length} 种</span>
+      <span class="tier-label">${label || t('fanSuffix', fan)}</span>
+      <span class="tier-count">${t('countSuffix', items.length)}</span>
       <span class="tier-arrow">▼</span>
     `;
     header.addEventListener('click', () => section.classList.toggle('collapsed'));
@@ -248,7 +305,7 @@ function renderRiver(notation) {
   wrap.className = 'tile-river-wrap';
   const label = document.createElement('span');
   label.className = 'tile-river-label';
-  label.textContent = '牌河';
+  label.textContent = t('river');
   wrap.appendChild(label);
   const grid = document.createElement('div');
   grid.className = 'tile-river';
@@ -266,7 +323,7 @@ function renderWait(waitArr) {
   row.className = 'tile-wait-row';
   const label = document.createElement('span');
   label.className = 'tile-wait-label';
-  label.textContent = '听牌';
+  label.textContent = t('wait');
   row.appendChild(label);
   waitArr.forEach(code => {
     const img = makeTileImg(code);
@@ -303,15 +360,15 @@ function buildCard(f) {
   ).join('');
 
   const condHtml = f.conditions
-    ? `<div class="detail-row"><strong>条件</strong><span>${f.conditions}</span></div>` : '';
+    ? `<div class="detail-row"><strong>${t('conditions')}</strong><span>${f.conditions}</span></div>` : '';
   const excludeNames = f.excludes?.filter(Boolean) || [];
   const exclHtml = excludeNames.length
-    ? `<div class="detail-row detail-excludes"><strong>不计</strong><span>${excludeNames.join('、')}</span></div>` : '';
-  const htNames = (f.handTypes || []).join('、');
+    ? `<div class="detail-row detail-excludes"><strong>${t('excludes')}</strong><span>${excludeNames.join(IS_EN_PAGE ? ', ' : '、')}</span></div>` : '';
+  const htNames = (f.handTypes || []).join(IS_EN_PAGE ? ', ' : '、');
   const htHtml = htNames
-    ? `<div class="detail-row"><strong>牌型</strong><span>${htNames}</span></div>` : '';
-  const meldHtml = `<div class="detail-row"><strong>副露</strong><span>${f.meldAllowed ? '允许' : '不允许（必须门清）'}</span></div>`;
-  const srcHtml  = `<div class="detail-row"><strong>来源</strong><span>${f.source}</span></div>`;
+    ? `<div class="detail-row"><strong>${t('handType')}</strong><span>${htNames}</span></div>` : '';
+  const meldHtml = `<div class="detail-row"><strong>${t('meld')}</strong><span>${f.meldAllowed ? t('allowed') : t('disallowedClosed')}</span></div>`;
+  const srcHtml  = `<div class="detail-row"><strong>${t('source')}</strong><span>${f.source}</span></div>`;
   const notesHtml = f.notes
     ? `<p class="card-notes">${f.notes}</p>` : '';
   const tipsHtml = f.tips
@@ -321,7 +378,7 @@ function buildCard(f) {
   const calcHtml = `
     <div class="calc-check-wrap">
       <input type="checkbox" class="calc-checkbox" id="chk-${f.id}" ${isChecked ? 'checked' : ''}>
-      <label class="calc-check-label" for="chk-${f.id}">计入 ${f.fan === 0 ? '立直' : f.fan + ' 番'}</label>
+      <label class="calc-check-label" for="chk-${f.id}">${t('includeFan', f.fan)}</label>
     </div>`;
 
   card.innerHTML = `
@@ -479,7 +536,7 @@ function showTermPopup(termEl, termName) {
         <strong class="term-popup-name" translate="no">${popupName}</strong>
       </div>
       <p class="term-popup-desc">${f.desc}</p>
-      <button class="term-popup-goto" data-id="${f.id}">→ 查看完整</button>`;
+      <button class="term-popup-goto" data-id="${f.id}">${t('viewFull')}</button>`;
     popup.querySelector('.term-popup-goto').addEventListener('click', e => {
       e.stopPropagation();
       const originCard = termEl.closest('.fan-card');
@@ -545,7 +602,7 @@ function showBackButton() {
     btn = document.createElement('button');
     btn.id = 'back-to-origin';
     btn.className = 'btn-outline hidden';
-    btn.textContent = '← 回到原条目';
+    btn.textContent = t('backOrigin');
     btn.addEventListener('click', () => {
       document.querySelectorAll('.card-highlight').forEach(c => c.classList.remove('card-highlight'));
       const id = state.jumpOriginId;
@@ -572,7 +629,7 @@ function toggleCalcMode() {
   $calcBar.classList.toggle('hidden', !state.calcMode);
 
   const btn = document.getElementById('calc-toggle');
-  btn.textContent = state.calcMode ? '退出计番' : '计番';
+  if (btn) btn.textContent = state.calcMode ? t('calcExit') : t('calcEnter');
 
   if (!state.calcMode) {
     state.selected.clear();
@@ -603,6 +660,33 @@ const HC_UI_EN = {
   '合计': 'Total',
   '无番和': 'No scoring fans',
   '庄赢': 'Dealer',
+  '立牌': 'Standing',
+  '和牌张': 'Winning Tile',
+  '副露': 'Melds',
+  '自摸': 'Self Draw',
+  '杠上开铳': 'Kan Discard Win',
+  '抢杠': 'Rob Kan',
+  '宝牌': 'Dora',
+  '立直': 'Riichi',
+  '二立直': 'Double Riichi',
+  '明牌立直': 'Open Riichi',
+  '一发': 'Ippatsu',
+  '东': 'East',
+  '南': 'South',
+  '西': 'West',
+  '北': 'North',
+  '明杠': 'Open Kong',
+  '暗杠': 'Concealed Kong',
+  '和绝张': 'Last Tile',
+  '杠上开花': 'Kong Draw',
+  '海底捞月': 'Last Draw',
+  '天和': 'Heavenly Hand',
+  '地和': 'Earthly Hand',
+  '人和': 'Hand of Man',
+  '流局满贯': 'Great Exhaustive Draw',
+  '圈风': 'Round Wind',
+  '门风': 'Seat Wind',
+  '花牌': 'Flowers',
 };
 
 // 通用翻译查找：fans.js nameEn → GLOSSARY_TERM_EN → HC_UI_EN → null
