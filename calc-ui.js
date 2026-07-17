@@ -307,17 +307,21 @@
     S.dora = cbDora.checked ? parseInt(selDora.value) : 0;
   }
 
+  // 是否有公开副露：吃 / 碰 / 明杠。暗杠算暗刻，不破坏门清，故不计入。
+  function hasOpenMeld() {
+    return S.melds.some(m => m.type === 'chow' || m.type === 'pung' || (m.type === 'kong' && !m.concealed));
+  }
+
   function updateKongWinCheckbox() {
-    const hasKong     = S.melds.some(m => m.type === 'kong');
-    const hasOpenMeld = S.melds.some(m => m.type === 'chow' || m.type === 'pung' || (m.type === 'kong' && !m.concealed));
+    const hasKong  = S.melds.some(m => m.type === 'kong');
     const cbKong   = document.getElementById('hc-kong-win');
     const cbGkc    = document.getElementById('hc-gang-kai-chong');
     const cbRiichi = document.getElementById('hc-riichi');
     cbKong.disabled   = !hasKong;
     // 杠上开铳是截胡对方的杠，与自身手牌是否有杠无关，不在此禁用
-    cbRiichi.disabled = hasOpenMeld;
+    cbRiichi.disabled = hasOpenMeld();   // 仅公开副露禁用立直；暗杠仍可立直
     if (!hasKong && S.kongWin) { S.kongWin = false; cbKong.checked = false; }
-    if (hasOpenMeld  && S.riichi) {
+    if (hasOpenMeld() && S.riichi) {
       S.riichi = false; cbRiichi.checked = false;
       document.getElementById('hc-riichi-type').disabled = true;
       S.ippatsu = false;
@@ -329,7 +333,7 @@
     if (!S.riichi) {
       cbIppatsu.disabled = true;
       if (S.ippatsu) { S.ippatsu = false; cbIppatsu.checked = false; }
-    } else if (!hasOpenMeld) {
+    } else if (!hasOpenMeld()) {
       cbIppatsu.disabled = false;
     }
   }
@@ -731,9 +735,9 @@
   function applyVillageRules(result) {
     const fans = [...result.fans];
 
-    // 村规1：门清（无副露）自摸时 → 门清自摸（2番）+ 门前清（2番）并列计算
-    // 必然门清番种（十三幺/七对子等）只计门清自摸，不追加门前清
-    if (S.selfDrawn && S.melds.length === 0) {
+    // 村规1：门清（无公开副露）自摸时 → 门清自摸（2番）+ 门前清（2番）并列计算
+    // 暗杠算暗刻、不破坏门清，故只排除吃/碰/明杠；必然门清番种（十三幺/七对子等）只计门清自摸
+    if (S.selfDrawn && !hasOpenMeld()) {
       // 1a. 必然门清番种：WASM给"非门清自摸"(1番)时，升级为门清自摸(2番)
       const nonMenIdx = fans.findIndex(f => f.name === '非门清自摸');
       if (nonMenIdx !== -1) fans[nonMenIdx] = { ...fans[nonMenIdx], name: '门清自摸' };
@@ -1018,8 +1022,8 @@
     ];
     if (allTiles.some(t => t && (t.code >> 4) === 4)) return result; // 有字牌，不成立
 
-    // 有副露降至16番；此函数在 applyFansJsValues 之后运行，需自行计算 total
-    const fanVal = S.melds.length > 0 ? 16 : 24;
+    // 有公开副露降至16番（暗杠不算副露，仍按门清24番）；此函数在 applyFansJsValues 之后运行，需自行计算 total
+    const fanVal = hasOpenMeld() ? 16 : 24;
     const fans = result.fans.filter(f => f.name !== '全带幺' && f.name !== '无字');
     fans.push({ fan: fanVal, count: 1, value: fanVal, name: '纯全带幺九' });
     return { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
