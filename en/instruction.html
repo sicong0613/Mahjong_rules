@@ -47,6 +47,7 @@
     .tile-suite-row, .hand-tiles, .concept-card-tiles, .common-hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
     .tile-suite-label, .hand-label, .concept-card-note, .common-hand-desc { font-size: .75rem; color: var(--text-muted); }
     .tile-sm { width: 26px; height: 34px; padding: 1px; box-sizing: border-box; border-radius: 3px; object-fit: contain; display: block; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+    @media (max-width: 480px) { .tile-sm { width: 20px; height: 26px; } }   /* 移动端缩小，须与横放/叠放 wrap 的移动端尺寸匹配（与中文版一致） */
     .tile-sm[src$="X.svg"] { padding: 0; object-fit: fill; }   /* 牌背铺满，去掉白边（与中文版一致） */
     /* 横放 / 叠放的牌（副露示意），与中文版一致 */
     .tile-rotated-wrap { display: inline-flex; align-items: center; justify-content: center; width: 37px; height: 28px; flex-shrink: 0; }
