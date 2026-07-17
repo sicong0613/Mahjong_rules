@@ -123,7 +123,7 @@
   <script src="data/glossary_en.js?v=1"></script>
   <script src="data/fans.js?v=6"></script>
   <script src="data/fans_en.js?v=2"></script>
-  <script src="data/instruction_en.js?v=2"></script>
+  <script src="data/instruction_en.js?v=3"></script>
   <script>
     // Hidden from the common-hands grid (matched by Chinese name, as /api/fan-stats reports it)
     const COMMON_HANDS_HIDE = new Set(['宝牌']);   // don't surface Dora
@@ -377,6 +377,20 @@
       if (!e.target.closest('#term-popup')) hideTermPopup();
     });
     linkifyText(main);
+
+    // <base href="../"> makes "#s3"-style links resolve against the site root, which would
+    // send in-page section links to the Chinese homepage. Intercept clicks on anchors whose
+    // hash targets a section on THIS page and scroll there instead.
+    document.addEventListener('click', e => {
+      const a = e.target.closest('a[href]');
+      if (!a || !a.hash) return;
+      const target = document.getElementById(a.hash.slice(1));
+      if (!target) return;   // hash not on this page (e.g. reference-table link) → let it navigate
+      e.preventDefault();
+      const y = target.getBoundingClientRect().top + window.scrollY - 96;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+      history.replaceState(null, '', location.pathname + a.hash);
+    });
 
     // #rrggbb → rgba(...), for the %-bar card background
     function hexToRgba(hex, alpha) {

@@ -213,7 +213,7 @@ const INSTRUCTION_DATA = [
     id: 's6',
     title: '6. Common Winning Hand Patterns',
     blocks: [
-      { type: 'p', text: 'The following are scoring-pattern examples that beginners encounter most often. For the full list, including conditions, exclusion rules, and more example hands, see the <a href="index.html" style="color:var(--accent);">homepage quick-reference table</a>.' },
+      { type: 'p', text: 'The following are scoring-pattern examples that beginners encounter most often. For the full list, including conditions, exclusion rules, and more example hands, see the <a href="en/" style="color:var(--accent);">homepage quick-reference table</a>.' },
       // Only the id from fans.js is needed; name/fan/description/example hand are all automatically read from FANS_DATA
       // To override the example hand, add an extra tiles field (same format as fans.js example)
       { type: 'common-hands', items: [
