@@ -288,6 +288,96 @@
       main.appendChild(section);
     });
 
+    // ── Term highlighting: wrap glossary terms and fan names in clickable .term
+    //    spans that pop up a definition (mirrors the Chinese guide; CSS in style.css) ──
+    let _termMap = null, _termPattern = null, _activeTerm = null;
+    function getTermMap() {
+      if (_termMap) return _termMap;
+      _termMap = new Map();
+      if (typeof GLOSSARY !== 'undefined')
+        for (const [term, def] of Object.entries(GLOSSARY)) _termMap.set(term, { type: 'gloss', def });
+      FANS_DATA.forEach(f => {
+        _termMap.set(f.name, { type: 'fan', data: f });
+        (f.nameAlt || []).forEach(alt => _termMap.set(alt, { type: 'fan', data: f }));
+      });
+      return _termMap;
+    }
+    function getTermPattern() {
+      if (_termPattern) return _termPattern;
+      const terms = [...getTermMap().keys()].filter(Boolean).sort((a, b) => b.length - a.length);
+      const body = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      // Letter-boundary lookarounds: short terms (Meld, Pon, Discard…) must not match mid-word
+      _termPattern = new RegExp('(?<![A-Za-z])(?:' + body + ')(?![A-Za-z])', 'g');
+      return _termPattern;
+    }
+    function linkifyText(rootEl) {
+      const pattern = getTermPattern();
+      const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+          if (node.parentElement?.closest('.tile-suite-row,.hand-tiles,.concept-card-tiles,.common-hand-tiles,.term,.fan-badge,.instr-title'))
+            return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      const nodes = []; let n;
+      while ((n = walker.nextNode())) nodes.push(n);
+      nodes.forEach(textNode => {
+        const text = textNode.textContent;
+        pattern.lastIndex = 0;
+        let match, last = 0;
+        const frag = document.createDocumentFragment();
+        while ((match = pattern.exec(text)) !== null) {
+          if (match.index > last) frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+          const span = document.createElement('span');
+          span.className = 'term'; span.dataset.term = match[0]; span.textContent = match[0];
+          frag.appendChild(span);
+          last = match.index + match[0].length;
+        }
+        if (last === 0) return;
+        if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+        textNode.parentNode.replaceChild(frag, textNode);
+      });
+    }
+    function showTermPopup(termEl, termName) {
+      let popup = document.getElementById('term-popup');
+      if (!popup) { popup = document.createElement('div'); popup.id = 'term-popup'; popup.className = 'hidden'; document.body.appendChild(popup); }
+      const entry = getTermMap().get(termName);
+      if (!entry) return;
+      if (entry.type === 'fan') {
+        const f = entry.data;
+        popup.innerHTML = `
+          <div class="term-popup-head">
+            <span class="fan-badge badge-${f.fan} term-popup-badge">${f.fan}</span>
+            <strong class="term-popup-name">${f.name}</strong>
+          </div>
+          <p class="term-popup-desc">${f.desc}</p>
+          <a class="term-popup-goto" href="en/index.html#${f.id}" target="_blank">→ View reference table</a>`;
+      } else {
+        popup.innerHTML = `
+          <div class="term-popup-head"><strong class="term-popup-name">${termName}</strong></div>
+          <p class="term-popup-desc">${entry.def}</p>`;
+      }
+      popup.classList.remove('hidden');
+      const rect = termEl.getBoundingClientRect();
+      const W = 250, M = 8;
+      let left = rect.left + window.scrollX;
+      if (left + W > window.innerWidth - M) left = window.innerWidth - W - M;
+      if (left < M) left = M;
+      popup.style.left = left + 'px';
+      popup.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+    }
+    function hideTermPopup() { _activeTerm = null; document.getElementById('term-popup')?.classList.add('hidden'); }
+    document.addEventListener('click', e => {
+      const term = e.target.closest('.term');
+      if (term) {
+        if (term === _activeTerm) { hideTermPopup(); return; }
+        _activeTerm = term; showTermPopup(term, term.dataset.term); return;
+      }
+      if (!e.target.closest('#term-popup')) hideTermPopup();
+    });
+    linkifyText(main);
+
     // #rrggbb → rgba(...), for the %-bar card background
     function hexToRgba(hex, alpha) {
       const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
