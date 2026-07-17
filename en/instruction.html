@@ -48,6 +48,15 @@
     .tile-suite-label, .hand-label, .concept-card-note, .common-hand-desc { font-size: .75rem; color: var(--text-muted); }
     .tile-sm { width: 26px; height: 34px; padding: 1px; box-sizing: border-box; border-radius: 3px; object-fit: contain; display: block; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
     .tile-sm[src$="X.svg"] { padding: 0; object-fit: fill; }   /* 牌背铺满，去掉白边（与中文版一致） */
+    /* 横放 / 叠放的牌（副露示意），与中文版一致 */
+    .tile-rotated-wrap { display: inline-flex; align-items: center; justify-content: center; width: 37px; height: 28px; flex-shrink: 0; }
+    .tile-rotated-wrap .tile-sm { transform: rotate(90deg); }
+    @media (max-width: 480px) { .tile-rotated-wrap { width: 26px; height: 20px; } }
+    .tile-stacked-wrap { position: relative; display: inline-block; width: 37px; height: 44px; flex-shrink: 0; }
+    .tile-stacked-wrap .tile-sm { position: absolute; left: 0; right: 0; margin: 0 auto; transform: rotate(90deg); }
+    .tile-stacked-wrap .tile-sm:first-child { top: 13px; }
+    .tile-stacked-wrap .tile-sm:last-child  { top: -15px; }
+    @media (max-width: 480px) { .tile-stacked-wrap { width: 28px; height: 34px; } .tile-stacked-wrap .tile-sm:first-child { top: 11px; } .tile-stacked-wrap .tile-sm:last-child { top: -11px; } }
     .hand-example, .concept-card, .common-hand-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin: 8px 0; }
     .concept-grid, .common-hands-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 12px; }
     .concept-card-label, .common-hand-name { font-weight: 700; color: var(--accent); }
@@ -63,10 +72,34 @@
       padding: 5px 12px; cursor: pointer;
     }
     .common-hands-toggle:hover { border-color: var(--accent); }
-    .info-box, .tip-box, .warning-box, .collapse-box { border-radius: 0 6px 6px 0; padding: 8px 12px; margin: 10px 0; font-size: .82rem; line-height: 1.65; }
-    .info-box { background: #e3f2fd; border-left: 3px solid #1565c0; color: #1a3a5c; }
-    .tip-box, .collapse-box { background: #fffbf0; border-left: 3px solid #f0c040; color: #5a4a20; }
-    .warning-box { background: #ffebee; border-left: 3px solid #b71c1c; color: #5a1a1a; }
+    /* Inline collapsibles embedded in paragraph text (excludes collapse/warning boxes) */
+    .instr-section details:not(.collapse-box):not(.warning-box) { display: inline; }
+    .instr-section details:not(.collapse-box):not(.warning-box) summary {
+      display: inline; color: var(--accent); cursor: pointer; font-size: .85em; user-select: none;
+    }
+    .instr-section details:not(.collapse-box):not(.warning-box)[open] {
+      display: block; background: var(--surface); border-radius: 6px; padding: 6px 10px; margin: 4px 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,.12), 0 0 0 1px var(--border);
+    }
+    .instr-section details:not(.collapse-box):not(.warning-box)[open] summary { display: block; margin-bottom: 4px; }
+    /* Info / tip boxes */
+    .info-box { background: #e3f2fd; border-left: 3px solid #1565c0; border-radius: 0 6px 6px 0; padding: 8px 12px; font-size: .82rem; color: #1a3a5c; margin: 10px 0; line-height: 1.65; }
+    .tip-box { background: #fffbf0; border-left: 3px solid #f0c040; border-radius: 0 6px 6px 0; padding: 8px 12px; font-size: .82rem; color: #5a4a20; margin: 10px 0; line-height: 1.65; }
+    /* Collapsible boxes */
+    .collapse-box, .warning-box { border-radius: 0 6px 6px 0; margin: 10px 0; font-size: .82rem; line-height: 1.65; }
+    .collapse-box { background: #fff1ab; border-left: 3px solid #ffd22f; color: #3e1a00; }
+    .warning-box  { background: #ffebee; border-left: 3px solid #b71c1c; color: #5a1a1a; }
+    .collapse-box summary, .warning-box summary {
+      padding: 8px 12px; cursor: pointer; font-weight: 600; list-style: none;
+      display: flex; align-items: center; gap: 6px; user-select: none;
+    }
+    .collapse-box summary::-webkit-details-marker,
+    .warning-box  summary::-webkit-details-marker { display: none; }
+    .collapse-box summary::before, .warning-box summary::before {
+      content: '▶'; font-size: .65em; transition: transform .15s; flex-shrink: 0;
+    }
+    .collapse-box[open] summary::before, .warning-box[open] summary::before { transform: rotate(90deg); }
+    .collapse-body { padding: 0 12px 8px; }
     .step-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
     .step-list li { display: flex; gap: 10px; align-items: flex-start; }
     .step-num { flex-shrink: 0; width: 22px; height: 22px; background: var(--accent); color: #fff; border-radius: 50%; font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
@@ -89,7 +122,7 @@
   <script src="data/glossary_en.js?v=1"></script>
   <script src="data/fans.js?v=6"></script>
   <script src="data/fans_en.js?v=2"></script>
-  <script src="data/instruction_en.js?v=1"></script>
+  <script src="data/instruction_en.js?v=2"></script>
   <script>
     // Hidden from the common-hands grid (matched by Chinese name, as /api/fan-stats reports it)
     const COMMON_HANDS_HIDE = new Set(['宝牌']);   // don't surface Dora
@@ -119,18 +152,42 @@
       img.alt = TILE_LABELS[code] || code;
       return img;
     }
-    function renderTileStr(str, container) {
-      str.trim().split(/\s+/).forEach(tok => {
-        if (tok === '|') { const sep = document.createElement('span'); sep.style.width = '8px'; container.appendChild(sep); return; }
-        container.appendChild(makeTile(tok.replace(/^>/, '')));
-      });
+    // > prefix = tile turned sideways (open meld); two adjacent > tiles = stacked (added kan)
+    function renderTileStr(tilesStr, container) {
+      const tokens = tilesStr.trim().split(/\s+/);
+      let i = 0;
+      while (i < tokens.length) {
+        const tok = tokens[i];
+        if (tok === '|') {
+          const sep = document.createElement('span'); sep.style.width = '8px';
+          container.appendChild(sep); i++;
+        } else if (tok.startsWith('>') && i + 1 < tokens.length && tokens[i + 1].startsWith('>')) {
+          const wrap = document.createElement('span'); wrap.className = 'tile-stacked-wrap';
+          wrap.appendChild(makeTile(tok.slice(1)));
+          wrap.appendChild(makeTile(tokens[i + 1].slice(1)));
+          container.appendChild(wrap); i += 2;
+        } else if (tok.startsWith('>')) {
+          const wrap = document.createElement('span'); wrap.className = 'tile-rotated-wrap';
+          wrap.appendChild(makeTile(tok.slice(1)));
+          container.appendChild(wrap); i++;
+        } else {
+          container.appendChild(makeTile(tok)); i++;
+        }
+      }
     }
     function renderBlock(block) {
-      if (block.type === 'p' || block.type === 'info' || block.type === 'tip' || block.type === 'warning' || block.type === 'collapse') {
-        const el = document.createElement(block.type === 'p' ? 'p' : 'div');
-        if (block.type !== 'p') el.className = `${block.type}-box`;
-        el.innerHTML = block.title ? `<strong>${block.title}</strong><br>${block.text}` : block.text;
-        return el;
+      if (block.type === 'p') { const el = document.createElement('p'); el.innerHTML = block.text; return el; }
+      if (block.type === 'info' || block.type === 'tip') {
+        const el = document.createElement('div'); el.className = `${block.type}-box`; el.innerHTML = block.text; return el;
+      }
+      if (block.type === 'collapse' || block.type === 'warning') {
+        const details = document.createElement('details'); details.className = `${block.type}-box`;
+        if (block.type === 'warning') details.setAttribute('open', '');
+        const summary = document.createElement('summary');
+        summary.textContent = block.title || (block.type === 'warning' ? 'Notice' : 'Details');
+        const body = document.createElement('div'); body.className = 'collapse-body'; body.innerHTML = block.text;
+        details.append(summary, body);
+        return details;
       }
       if (block.type === 'h3') { const el = document.createElement('h3'); el.textContent = block.text; return el; }
       if (block.type === 'ul') {
