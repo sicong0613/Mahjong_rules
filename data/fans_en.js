@@ -81,6 +81,7 @@
     return {
       ...f,
       name,
+      nameZh: f.name,   // 保留中文原名：/api/fan-stats 以中文名回传，英文页据此匹配统计
       nameAlt: (f.nameAlt || []).filter(x => /^[\x00-\x7F\s\-()/]+$/.test(x)),
       desc: descOverrides[f.id] || genericDesc({ ...f, nameEn: name }),
       conditions: f.meldAllowed === false ? "Closed hand required unless the specific rule text says otherwise." : "",

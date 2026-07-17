@@ -50,6 +50,18 @@
     .hand-example, .concept-card, .common-hand-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin: 8px 0; }
     .concept-grid, .common-hands-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 12px; }
     .concept-card-label, .common-hand-name { font-weight: 700; color: var(--accent); }
+    /* ── Common-hands stats (mirrors the Chinese guide) ── */
+    .common-hand-card { transition: background .45s ease; }
+    .common-hand-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .common-hand-pct { margin-left: auto; font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
+    .yakuhai-names { font-weight: 700; font-size: .82rem; margin: 2px 0 5px; }
+    .common-hands-grid:not(.show-minor) .common-hand-card.hc-minor { display: none; }
+    .common-hands-toggle {
+      margin-top: 10px; font-size: .8rem; color: var(--accent);
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      padding: 5px 12px; cursor: pointer;
+    }
+    .common-hands-toggle:hover { border-color: var(--accent); }
     .info-box, .tip-box, .warning-box, .collapse-box { border-radius: 0 6px 6px 0; padding: 8px 12px; margin: 10px 0; font-size: .82rem; line-height: 1.65; }
     .info-box { background: #e3f2fd; border-left: 3px solid #1565c0; color: #1a3a5c; }
     .tip-box, .collapse-box { background: #fffbf0; border-left: 3px solid #f0c040; color: #5a4a20; }
@@ -75,9 +87,13 @@
 
   <script src="data/glossary_en.js?v=1"></script>
   <script src="data/fans.js?v=4"></script>
-  <script src="data/fans_en.js?v=1"></script>
+  <script src="data/fans_en.js?v=2"></script>
   <script src="data/instruction_en.js?v=1"></script>
   <script>
+    // Hidden from the common-hands grid (matched by Chinese name, as /api/fan-stats reports it)
+    const COMMON_HANDS_HIDE = new Set(['宝牌']);   // don't surface Dora
+    const zhOf = f => f.nameZh || f.name;
+
     const TILE_LABELS = {
       '1m':'1 character','2m':'2 characters','3m':'3 characters','4m':'4 characters','5m':'5 characters','6m':'6 characters','7m':'7 characters','8m':'8 characters','9m':'9 characters',
       '1p':'1 dot','2p':'2 dots','3p':'3 dots','4p':'4 dots','5p':'5 dots','6p':'6 dots','7p':'7 dots','8p':'8 dots','9p':'9 dots',
@@ -150,11 +166,42 @@
       if (block.type === 'common-hands') {
         const grid = document.createElement('div'); grid.className = 'common-hands-grid';
         block.items.forEach(item => {
-          const f = item.id ? FANS_DATA.find(x => x.id === item.id) : null;
+          // Value Honors: merge several fans into one card (special grouping, only here)
+          if (item.ids) {
+            const subs = item.ids.map(id => FANS_DATA.find(x => x.id === id)).filter(Boolean);
+            if (subs.length === 0) return;
+            const card = document.createElement('div'); card.className = 'common-hand-card';
+            card.dataset.fanGroup = subs.map(zhOf).join(',');   // stats keyed by Chinese name
+            card.dataset.fanTier  = subs[0].fan;
+            const header = document.createElement('div'); header.className = 'common-hand-header';
+            const badge = document.createElement('span'); badge.className = `fan-badge badge-${subs[0].fan}`; badge.textContent = subs[0].fan;
+            const name = document.createElement('span'); name.className = 'common-hand-name'; name.textContent = item.groupName;
+            const pct = document.createElement('span'); pct.className = 'common-hand-pct';
+            header.append(badge, name, pct); card.appendChild(header);
+            const names = document.createElement('div'); names.className = 'yakuhai-names';
+            names.textContent = subs.map(s => s.name).join(' / ');
+            card.appendChild(names);
+            const desc = document.createElement('div'); desc.className = 'common-hand-desc';
+            desc.textContent = 'Worth 2 fan immediately once melded; see the reference table.';
+            card.appendChild(desc);
+            grid.appendChild(card);
+            return;
+          }
+          const f = FANS_DATA.find(x => x.id === item.id);
+          if (!f) return;
+          if (f.fan === 1) return;                      // 1-fan patterns not shown (still recorded)
+          if (COMMON_HANDS_HIDE.has(zhOf(f))) return;
           const card = document.createElement('div'); card.className = 'common-hand-card';
-          const name = item.groupName || f?.name || '';
-          card.innerHTML = `<div><span class="fan-badge badge-${f?.fan || 2}">${f?.fan || 2}</span> <span class="common-hand-name">${name}</span></div><div class="common-hand-desc">${f?.desc || 'Common value-honor patterns.'}</div>`;
-          if (f?.example) { const row = document.createElement('div'); row.className = 'common-hand-tiles'; renderTileStr(f.example, row); card.appendChild(row); }
+          card.dataset.fanName = zhOf(f);               // stats keyed by Chinese name
+          card.dataset.fanTier = f.fan;
+          const header = document.createElement('div'); header.className = 'common-hand-header';
+          const badge = document.createElement('span'); badge.className = `fan-badge badge-${f.fan}`; badge.textContent = f.fan;
+          const name = document.createElement('span'); name.className = 'common-hand-name'; name.textContent = f.name;
+          const pct = document.createElement('span'); pct.className = 'common-hand-pct';
+          header.append(badge, name, pct); card.appendChild(header);
+          const desc = document.createElement('div'); desc.className = 'common-hand-desc'; desc.textContent = f.desc || '';
+          card.appendChild(desc);
+          if (f.example) { const row = document.createElement('div'); row.className = 'common-hand-tiles'; renderTileStr(f.example, row); card.appendChild(row); }
           grid.appendChild(card);
         });
         return grid;
@@ -170,6 +217,139 @@
       sec.blocks.forEach(block => { const el = renderBlock(block); if (el) section.appendChild(el); });
       main.appendChild(section);
     });
+
+    // #rrggbb → rgba(...), for the %-bar card background
+    function hexToRgba(hex, alpha) {
+      const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+      if (!m) return '';
+      const n = parseInt(m[1], 16);
+      return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+    }
+
+    // ── Fetch stats from the Cloudflare Worker: supplement uploaded fans,
+    //    keep only reported ones, reorder by frequency, show percentages ──
+    //    Note: /api/fan-stats reports Chinese fan names, so all matching is by nameZh.
+    fetch('/api/fan-stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;   // API unavailable: keep the static grid as-is
+        const fans  = Array.isArray(data) ? data : (data.fans  || []);
+        const total = Array.isArray(data) ? 0     : (data.total || 0);
+        const freq  = Object.fromEntries(fans.map(d => [d.name, d.count]));
+
+        const grid = document.querySelector('.common-hands-grid');
+        if (!grid) return;
+
+        const cardCount = card => card.dataset.fanGroup
+          ? card.dataset.fanGroup.split(',').reduce((s, n) => s + (freq[n] || 0), 0)
+          : (freq[card.dataset.fanName] || 0);
+
+        const existing = new Set();
+        grid.querySelectorAll('.common-hand-card').forEach(c => {
+          if (c.dataset.fanGroup) c.dataset.fanGroup.split(',').forEach(n => existing.add(n));
+          else if (c.dataset.fanName) existing.add(c.dataset.fanName);
+        });
+        // Supplement fans that were uploaded but aren't in the static grid
+        fans.forEach(({ name, count }) => {          // name is Chinese (from API)
+          if (!count || existing.has(name)) return;
+          const f = FANS_DATA.find(x => zhOf(x) === name);
+          if (f && f.fan === 1) return;
+          if (COMMON_HANDS_HIDE.has(name)) return;
+          const card = document.createElement('div');
+          card.className = 'common-hand-card';
+          card.dataset.fanName = name;               // Chinese, for freq matching
+          const header = document.createElement('div'); header.className = 'common-hand-header';
+          const badge = document.createElement('span');
+          badge.className = f ? `fan-badge badge-${f.fan}` : 'fan-badge';
+          badge.textContent = f ? f.fan : '?';
+          const nameEl = document.createElement('span'); nameEl.className = 'common-hand-name';
+          nameEl.textContent = f ? f.name : name;    // English label when known
+          const pct = document.createElement('span'); pct.className = 'common-hand-pct';
+          header.append(badge, nameEl, pct); card.appendChild(header);
+          if (f) card.dataset.fanTier = f.fan;
+          const desc = document.createElement('div'); desc.className = 'common-hand-desc'; desc.textContent = f?.desc ?? '';
+          card.appendChild(desc);
+          const tileStr = f?.example ?? '';
+          if (tileStr) { const tiles = document.createElement('div'); tiles.className = 'common-hand-tiles'; renderTileStr(tileStr, tiles); card.appendChild(tiles); }
+          grid.appendChild(card);
+        });
+
+        // Keep only cards with reported data; drop 1-fan patterns and hidden ones
+        let shown = 0;
+        grid.querySelectorAll('.common-hand-card').forEach(card => {
+          const has = cardCount(card) > 0 && card.dataset.fanTier !== '1'
+                      && !COMMON_HANDS_HIDE.has(card.dataset.fanName);
+          card.hidden = !has;
+          if (has) shown++;
+        });
+
+        // Reorder: frequency desc → fan asc → name
+        const tierOf = c => Number(c.dataset.fanTier) || 0;
+        const nameOf = c => c.querySelector('.common-hand-name')?.textContent || '';
+        [...grid.children]
+          .sort((a, b) =>
+            (cardCount(b) - cardCount(a)) ||
+            (tierOf(a) - tierOf(b)) ||
+            nameOf(a).localeCompare(nameOf(b), 'en'))
+          .forEach(c => grid.appendChild(c));
+
+        // Fill percentages + turn each card background into a %-bar; collapse ≤2%
+        const rootStyle = getComputedStyle(document.documentElement);
+        let minorCount = 0;
+        grid.querySelectorAll('.common-hand-card').forEach(card => {
+          const pct = total > 0 ? Math.min(cardCount(card) / total * 100, 100) : 0;
+          const pctEl = card.querySelector('.common-hand-pct');
+          if (pctEl) pctEl.textContent = pct ? pct.toFixed(1) + '%' : '';
+          const tier = card.dataset.fanTier;
+          const rgba = hexToRgba(tier != null ? rootStyle.getPropertyValue('--c' + tier).trim() : '', 0.22)
+                       || 'rgba(120,120,120,0.15)';
+          const w = pct.toFixed(2);
+          card.style.background =
+            `linear-gradient(to right, ${rgba} 0 ${w}%, transparent ${w}% 100%), var(--surface)`;
+          const minor = !card.hidden && pct <= 2;
+          card.classList.toggle('hc-minor', minor);
+          if (minor) minorCount++;
+        });
+
+        // Expand/collapse ≤2% patterns
+        function refreshToggle() {
+          const t = document.getElementById('common-hands-toggle');
+          if (!t) return;
+          t.textContent = grid.classList.contains('show-minor')
+            ? 'Hide patterns ≤2%'
+            : 'Show more (≤2%)';
+        }
+        let toggle = document.getElementById('common-hands-toggle');
+        if (minorCount > 0) {
+          if (!toggle) {
+            toggle = document.createElement('button');
+            toggle.id = 'common-hands-toggle';
+            toggle.className = 'common-hands-toggle';
+            toggle.addEventListener('click', () => { grid.classList.toggle('show-minor'); refreshToggle(); });
+            grid.parentNode.insertBefore(toggle, grid.nextSibling);
+          }
+          toggle.hidden = false;
+          refreshToggle();
+        } else if (toggle) {
+          toggle.hidden = true;
+        }
+
+        // Empty note when nothing has been uploaded
+        let note = document.getElementById('common-hands-empty');
+        if (shown === 0) {
+          if (!note) {
+            note = document.createElement('p');
+            note.id = 'common-hands-empty';
+            note.style.cssText = 'color: var(--text-muted); margin-top: 12px;';
+            note.textContent = 'No uploaded data yet — upload your winning hands from the calculator.';
+            grid.parentNode.insertBefore(note, grid.nextSibling);
+          }
+          note.hidden = false;
+        } else if (note) {
+          note.hidden = true;
+        }
+      })
+      .catch(() => {});
   </script>
 </body>
 </html>
