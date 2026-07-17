@@ -683,7 +683,7 @@ const HC_UI_EN = {
   '天和': 'Heavenly Hand',
   '地和': 'Earthly Hand',
   '人和': 'Hand of Man',
-  '流局满贯': 'Great Exhaustive Draw',
+  '流局满贯': 'Nagashi Mangan',
   '圈风': 'Round Wind',
   '门风': 'Seat Wind',
   '花牌': 'Flowers',
