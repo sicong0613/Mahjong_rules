@@ -47,6 +47,7 @@
     .tile-suite-row, .hand-tiles, .concept-card-tiles, .common-hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
     .tile-suite-label, .hand-label, .concept-card-note, .common-hand-desc { font-size: .75rem; color: var(--text-muted); }
     .tile-sm { width: 26px; height: 34px; padding: 1px; box-sizing: border-box; border-radius: 3px; object-fit: contain; display: block; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+    .tile-sm[src$="X.svg"] { padding: 0; object-fit: fill; }   /* 牌背铺满，去掉白边（与中文版一致） */
     .hand-example, .concept-card, .common-hand-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin: 8px 0; }
     .concept-grid, .common-hands-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 12px; }
     .concept-card-label, .common-hand-name { font-weight: 700; color: var(--accent); }
@@ -86,7 +87,7 @@
   </footer>
 
   <script src="data/glossary_en.js?v=1"></script>
-  <script src="data/fans.js?v=5"></script>
+  <script src="data/fans.js?v=6"></script>
   <script src="data/fans_en.js?v=2"></script>
   <script src="data/instruction_en.js?v=1"></script>
   <script>

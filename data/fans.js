@@ -230,7 +230,7 @@ const FANS_DATA = [
     handTypes: [], meldAllowed: false,
     tags: ["流局", "幺九", "字牌", "广港日"], source: "广港日" },
 
-  { id: "shi_shang_san_nian", name: "石上三年", nameEn: "Double Riichi + Last Tile", fan: 48,
+  { id: "shi_shang_san_nian", name: "石上三年", nameEn: "Three years on a stone", fan: 48,
     desc: "二立直后以海底（妙手回春）或河底（海底捞月）形式胡牌。",
     excludes: ["二立直", "妙手回春", "海底捞月"],
     handTypes: ["33332", "七对"], meldAllowed: false,
