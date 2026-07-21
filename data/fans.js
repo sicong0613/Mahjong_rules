@@ -266,14 +266,14 @@ const FANS_DATA = [
     tags: ["幺九", "字牌"], source: "国标" ,
     example: "1s 1s 1s 1s | E E E | F F F | 9p 9p 9p | 1m 1m",},
 
-  { id: "yue_jian_hua_kai", name: "月见花开", nameEn: "Moon Viewing Kong Draw", fan: 32,
+  { id: "yue_jian_hua_kai", name: "月见花开", nameEn: "Moonlit blossoms", fan: 32,
     desc: "杠上开花所摸的恰好是本局最后一张可摸的牌。",
     excludes: ["杠上开花", "妙手回春"],
     handTypes: ["33332", "七对"], meldAllowed: true,
     tags: ["特殊和牌", "杠子", "自摸", "村规"], source: "村规" },
 
-  { id: "gang_zhen", name: "杠振", nameEn: "Kong Last Discard Win", fan: 32,
-    desc: "胡其他家岭上摸到的最后一张可摸的牌后打出的那张牌（放铳）。",
+  { id: "gang_zhen", name: "杠振", nameEn: "Af", fan: 32,
+    desc: "胡其他家岭上摸到的最后一张可摸的牌后打出的那张牌（放铳），即河底捞鱼加上杠上开花。",
     excludes: ["海底捞月", "杠上开铳"],
     handTypes: ["33332", "七对"], meldAllowed: true,
     tags: ["特殊和牌", "村规"], source: "村规" },
@@ -312,7 +312,7 @@ const FANS_DATA = [
     tags: ["刻子", "断幺", "无字", "对对胡"], source: "国标",
     example: "2s 2s 2s | 4m 4m 4m | 8s 8s 8s | 6p 6p 6p | 2p 2p", },
 
-  { id: "qing_yi_se", name: "清一色", nameEn: "Full Flush", fan: 24,
+  { id: "qing_yi_se", name: "清一色", nameEn: "All One Suit", fan: 24,
     desc: "由同一种花色数字牌组成的胡牌（33332 或七对子）。",
     excludes: ["缺一门", "无字"],
     handTypes: ["33332", "七对"], meldAllowed: true,
@@ -440,14 +440,14 @@ const FANS_DATA = [
     excludes: ["无字"],
     handTypes: ["33332", "七对"], meldAllowed: true,
     tags: ["无字", "断幺"], source: "国标" ,
-    example: "6m 7m 8m | 9s 9s 9s | 7p 7p 7p | 6p 7p 8p | E E",},
+    example: "6m 7m 8m | 9s 9s 9s | 7p 7p 7p | 6p 7p 8p | 9m 9m",},
 
   { id: "xiao_yu_wu", name: "小于5", nameEn: "Lower Tiles", fan: 12,
     desc: "由数字 1~4 的顺子、刻子、将牌组成的和牌。",
     excludes: ["无字"],
     handTypes: ["33332", "七对"], meldAllowed: true,
     tags: ["无字", "断幺"], source: "国标",
-    example: "1m 2m 3m | 4s 4s 4s | 2p 2p 2p | N N N | Z Z", },
+    example: "1m 2m 3m | 4s 4s 4s | 2p 2p 2p | 2s 3s 4s | 3p 3p", },
 
   { id: "san_feng_ke", name: "三风刻", nameEn: "Three Wind Pungs", fan: 12,
     desc: "三个风牌刻子（或杠）。",
@@ -502,7 +502,7 @@ const FANS_DATA = [
     tags: ["特殊和牌", "自摸"], source: "国标/广港日" ,
     notes: "为避免歧义，“海底”和“河底”的定义一律采用广港日叫法" },
 
-  { id: "hai_di_lao_yue", name: "河底捞月", nameEn: "Last Tile Claim", nameAlt: ["海底捞鱼（国标）"], fan: 8,
+  { id: "hai_di_lao_yue", name: "河底捞鱼", nameEn: "Last Tile Claim", nameAlt: ["海底捞鱼（国标）"], fan: 8,
     desc: "和别人打出的本局最后一张牌（非自摸）。",
     excludes: [],
     handTypes: ["33332", "七对", "不靠"], meldAllowed: true,

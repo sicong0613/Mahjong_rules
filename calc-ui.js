@@ -776,7 +776,7 @@
     if (S.gangKaiChong) {
       if (S.riverLast) {
         // 杠振：过滤掉 WASM 给出的末张放铳番，整体替换
-        const kept = fans.filter(f => f.name !== '河底捞月' && f.name !== '海底捞月');
+        const kept = fans.filter(f => f.name !== '河底捞鱼' && f.name !== '海底捞月');
         kept.push({ fan: 32, count: 1, value: 32, name: '杠振' });
         return { ...result, fans: kept };
       }
@@ -940,7 +940,7 @@
 
     // 规范化 combo 番名（同主流程 Step1 + Step2）
     const rename = { '妙手回春': '海底捞月' };
-    if (S.riverLast) rename['海底捞月'] = '河底捞月';
+    if (S.riverLast) rename['海底捞月'] = '河底捞鱼';
     combo.fans = combo.fans.map(f => rename[f.name] ? { ...f, name: rename[f.name] } : f);
     if (typeof WASM_NAME_MAP !== 'undefined') {
       combo.fans = combo.fans.map(f => WASM_NAME_MAP[f.name] ? { ...f, name: WASM_NAME_MAP[f.name] } : f);
@@ -1115,9 +1115,9 @@
     });
     if (!result.error) {
       // Step 1: 广式命名修正（依赖运行时状态，必须先做）
-      // 妙手回春（末张自摸）→ 海底捞月；有副露自摸末张 → 河底捞月
+      // 妙手回春（末张自摸）→ 海底捞月；有副露自摸末张 → 河底捞鱼
       const rename = { '妙手回春': '海底捞月' };
-      if (S.riverLast) rename['海底捞月'] = '河底捞月';
+      if (S.riverLast) rename['海底捞月'] = '河底捞鱼';
       result = {
         ...result,
         fans: result.fans.map(f => rename[f.name] ? { ...f, name: rename[f.name] } : f),
@@ -1148,7 +1148,7 @@
         };
         // 石上三年：二立直 + 海底/河底 → 升格48番，排斥底部番
         if (S.riichiType === 'double_riichi' && (S.wallLast || S.riverLast)) {
-          const bottomName = S.wallLast ? '海底捞月' : '河底捞月';
+          const bottomName = S.wallLast ? '海底捞月' : '河底捞鱼';
           const fans = result.fans.filter(f => f.name !== bottomName);
           fans.push({ fan: 48, count: 1, value: 48, name: '石上三年' });
           result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
@@ -1462,7 +1462,7 @@
     });
     document.getElementById('hc-self-drawn').addEventListener('change', e => {
       S.selfDrawn = e.target.checked;
-      // 自摸取消 → 海底捞月不再成立；自摸勾上 → 河底捞月不再成立
+      // 自摸取消 → 海底捞月不再成立；自摸勾上 → 河底捞鱼不再成立
       if (!e.target.checked && S.wallLast)  { S.wallLast  = false; document.getElementById('hc-wall-last').checked  = false; }
       if ( e.target.checked && S.riverLast) { S.riverLast = false; document.getElementById('hc-river-last').checked = false; }
       // 自摸与杠上开铳互斥
@@ -1485,7 +1485,7 @@
     });
     document.getElementById('hc-wall-last').addEventListener('change',  e => {
       S.wallLast = e.target.checked;
-      // 海底捞月互斥河底捞月；海底捞月必然自摸
+      // 海底捞月互斥河底捞鱼；海底捞月必然自摸
       if (e.target.checked) {
         S.riverLast = false; document.getElementById('hc-river-last').checked = false;
         S.selfDrawn = true;  document.getElementById('hc-self-drawn').checked  = true;

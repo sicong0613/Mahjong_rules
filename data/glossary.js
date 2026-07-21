@@ -57,7 +57,6 @@ const GLOSSARY_TERM_EN = {
   "和牌张":  "Win Tile",
   "花牌":    "Flowers",
   "河底捞鱼": "Last Discard Win",
-  "河底捞月": "Last Discard Win",
   "东": "East", "南": "South", "西": "West", "北": "North",
 };
 
