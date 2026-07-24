@@ -392,7 +392,7 @@ const FANS_DATA = [
     excludes: ["断幺"],
     handTypes: ["33332"], meldAllowed: true,
     tags: ["断幺", "无字"], source: "国标" ,
-    example: "4m 5m 6m | 4s 5s 6s | 5p 5p 5p | 4s 5s 6s | 5m 5m", },
+    example: "5m 6m 7m | 3s 4s 5s | 5p 5p 5p | 4s 5s 6s | 5m 5m", },
 
   { id: "san_tong_ke", name: "三同刻", nameEn: "Three Color Pungs", nameAlt: ["三色同刻"], fan: 16,
     desc: "三种花色各一组序数相同的刻子（或杠）。",
