@@ -1144,7 +1144,7 @@
         const RIICHI_MAP = {
           riichi:        { name: '立直',     fan: 2  },
           double_riichi: { name: '二立直',   fan: 16 },
-          open_riichi:   { name: '明牌立直', fan: 48 },
+          open_riichi:   { name: '明牌立直', fan: 24 },
         };
         // 石上三年：二立直 + 海底/河底 → 升格48番，排斥底部番
         if (S.riichiType === 'double_riichi' && (S.wallLast || S.riverLast)) {

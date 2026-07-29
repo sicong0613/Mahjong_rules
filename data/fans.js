@@ -236,7 +236,7 @@ const FANS_DATA = [
     handTypes: ["33332", "七对"], meldAllowed: false,
     tags: ["立直", "特殊和牌", "日麻"], source: "日麻" },
 
-  { id: "ming_pai_li_zhi", name: "明牌立直", nameEn: "Open Riichi", nameAlt: ["Open RIICHI"], fan: 48,
+  { id: "ming_pai_li_zhi", name: "明牌立直", nameEn: "Open Riichi", nameAlt: ["Open RIICHI"], fan: 24,
     desc: "立直时公布全部手牌。非立直状态下点明牌立直算役满。",
     excludes: ["立直", "门前清"],
     handTypes: ["33332", "七对"], meldAllowed: false,
