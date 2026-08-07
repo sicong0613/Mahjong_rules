@@ -709,6 +709,11 @@
   //   否则 → 番数封顶63后查表（累计役满封顶）
   function lookupPoints(result, selfDrawn, dealerWin) {
     if (!result || result.total < 2) return null;
+    const isEn = appLang() === 'en';
+    // 明牌立直点炮：一倍溢满，固定 36,000
+    if (!selfDrawn && (result.fans || []).some(f => f.name === '明牌立直')) {
+      return isEn ? '36,000 pts (Open Riichi ron penalty)' : '36,000 点（明牌立直溢满）';
+    }
     const highFans = (result.fans || []).filter(f => f.value >= 64);
     if (highFans.length > 0) {
       const mult = highFans.reduce((sum, f) => sum + (f.value >= 88 ? 2 : 1) * (f.count ?? 1), 0);
@@ -1090,7 +1095,59 @@
     };
   }
 
-  function doCalculate() {
+  // ─── 国士无振十三面检测 ───────────────────────────────────────────
+  // 检测当前立牌是否为国士无双十三面听牌（13张恰好是13种国士牌各一张）
+  function isKokushi13Way() {
+    const ORPHAN_CODES = new Set([
+      0x11, 0x19, // 1m, 9m
+      0x21, 0x29, // 1s, 9s
+      0x31, 0x39, // 1p, 9p
+      0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, // 东 南 西 北 中 发 白
+    ]);
+    const standing = S.standing.filter(Boolean);
+    if (standing.length !== 13) return false;
+    const seen = new Set();
+    for (const t of standing) {
+      if (!ORPHAN_CODES.has(t.code) || seen.has(t.code)) return false;
+      seen.add(t.code);
+    }
+    return true;
+  }
+
+  function showKokushiWuzhenDialog() {
+    return new Promise(resolve => {
+      const overlay = el('div', 'hc-modal-overlay');
+      const box = el('div', 'hc-modal');
+      const msg = el('p', 'hc-modal-msg');
+      msg.textContent = '检测到国士无双十三面听牌。';
+      const sub = el('p', 'hc-modal-msg');
+      sub.style.cssText = 'font-size:.82rem;color:var(--text-muted)';
+      sub.textContent = '本局是否为无振听牌（听牌前舍牌中不含任何国士牌）？若是则额外计一倍役满（+64番），合计 96,000 点。';
+      const btns = el('div', 'hc-modal-btns');
+      const no = el('button', 'hc-modal-btn'); no.textContent = '否（普通十三面）';
+      const yes = el('button', 'hc-modal-btn hc-modal-ok'); yes.textContent = '是（无振十三面）';
+      btns.append(no, yes);
+      box.append(msg, sub, btns);
+      overlay.appendChild(box);
+      document.getElementById('hand-calc-page').appendChild(overlay);
+      const close = val => { overlay.remove(); resolve(val); };
+      yes.onclick = () => close(true);
+      no.onclick = () => close(false);
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+    });
+  }
+
+  async function maybeApplyKokushiWuzhen(result) {
+    if (!result.fans.some(f => f.name === '十三幺')) return result;
+    if (!isKokushi13Way()) return result;
+    const isWuzhen = await showKokushiWuzhenDialog();
+    if (!isWuzhen) return result;
+    const fans = [...result.fans, { fan: 64, count: 1, value: 64, name: '国士无振十三面' }];
+    const total = fans.reduce((s, f) => s + f.value * f.count, 0);
+    return { ...result, fans, total, displayTotal: '88+64' };
+  }
+
+  async function doCalculate() {
     if (S.liujuManguan) {
       const r = { total: 48, fans: [{ fan: 48, count: 1, value: 48, name: '流局满贯' }] };
       renderResult(r);
@@ -1169,6 +1226,9 @@
         result = { ...result, fans, total: fans.reduce((s, f) => s + f.value * f.count, 0) };
       }
     }
+    if (!result.error) {
+      result = await maybeApplyKokushiWuzhen(result);
+    }
     renderResult(result);
     _lastResult = result.error ? null : result;
     _lastHand   = result.error ? null : currentHand();
@@ -1204,7 +1264,7 @@
     }
     const isEn = appLang() === 'en';
     const total = el('div', 'hc-result-total');
-    total.textContent = isEn ? `Total ${result.total} fan` : `合计 ${result.total} 番`;
+    total.textContent = isEn ? `Total ${result.displayTotal || result.total} fan` : `合计 ${result.displayTotal || result.total} 番`;
     dom.result.appendChild(total);
     const pts = lookupPoints(result, S.selfDrawn, S.dealerWin);
     if (pts) {

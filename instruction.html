@@ -158,6 +158,10 @@
       transform: rotate(90deg);
     }
     .collapse-body { padding: 0 12px 8px; }
+    .fp-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    .fp-table th, .fp-table td { border: 1px solid var(--border); padding: 4px 7px; text-align: center; white-space: nowrap; }
+    .fp-table th { background: var(--surface); font-weight: 700; }
+    .fp-table tbody tr:nth-child(even) { background: rgba(0,0,0,.03); }
 
     /* ── 步骤列表 ── */
     .step-list { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 10px; }
@@ -242,8 +246,8 @@
   </footer>
 
   <script src="data/glossary.js?v=3"></script>
-  <script src="data/fans.js?v=7"></script>
-  <script src="data/instruction.js?v=3"></script>
+  <script src="data/fans.js?v=8"></script>
+  <script src="data/instruction.js?v=4"></script>
   <script>
     // 常见牌型里按番名排除、不显示的番种（不影响记录）
     const COMMON_HANDS_HIDE = new Set(['宝牌']);

@@ -101,6 +101,10 @@
     }
     .collapse-box[open] summary::before, .warning-box[open] summary::before { transform: rotate(90deg); }
     .collapse-body { padding: 0 12px 8px; }
+    .fp-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    .fp-table th, .fp-table td { border: 1px solid var(--border); padding: 4px 7px; text-align: center; white-space: nowrap; }
+    .fp-table th { background: var(--surface); font-weight: 700; }
+    .fp-table tbody tr:nth-child(even) { background: rgba(0,0,0,.03); }
     .step-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
     .step-list li { display: flex; gap: 10px; align-items: flex-start; }
     .step-num { flex-shrink: 0; width: 22px; height: 22px; background: var(--accent); color: #fff; border-radius: 50%; font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
@@ -121,9 +125,9 @@
   </footer>
 
   <script src="data/glossary_en.js?v=1"></script>
-  <script src="data/fans.js?v=7"></script>
+  <script src="data/fans.js?v=8"></script>
   <script src="data/fans_en.js?v=2"></script>
-  <script src="data/instruction_en.js?v=3"></script>
+  <script src="data/instruction_en.js?v=4"></script>
   <script>
     // Hidden from the common-hands grid (matched by Chinese name, as /api/fan-stats reports it)
     const COMMON_HANDS_HIDE = new Set(['宝牌']);   // don't surface Dora

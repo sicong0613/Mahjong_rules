@@ -237,7 +237,7 @@ const FANS_DATA = [
     tags: ["立直", "特殊和牌", "日麻"], source: "日麻" },
 
   { id: "ming_pai_li_zhi", name: "明牌立直", nameEn: "Open Riichi", nameAlt: ["Open Riichi"], fan: 24,
-    desc: "立直时公布全部手牌。",
+    desc: "立直时公布全部手牌。明牌立直下若有人点炮则为一倍溢满，记36000点。",
     excludes: ["立直", "门前清"],
     handTypes: ["33332", "七对"], meldAllowed: false,
     tags: ["立直", "门清", "日麻"], source: "日麻" },
