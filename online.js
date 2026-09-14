@@ -97,10 +97,6 @@
     return d;
   }
 
-  function makeEmptySlot(size) {
-    return el('div', `hc-tile hc-tile-${size} hc-empty`);
-  }
-
   // ─── 计数（用于选牌器变暗）───────────────────────────────────
   function countAllTiles() {
     const m = new Map();
@@ -155,10 +151,17 @@
       t.classList.toggle('hc-exhausted', variant >= limit || total >= 4);
     });
     const pickable = S.phase === 'setup' || S.phase === 'draw';
-    dom.picker.querySelectorAll('.hc-picker-tile, .hc-backspace-key').forEach(t => {
+    dom.picker.querySelectorAll('.hc-picker-tile').forEach(t => {
       t.style.pointerEvents = pickable ? '' : 'none';
       t.style.opacity = pickable ? '' : '.35';
     });
+    // 退格键：起手输入阶段随时可用；摸牌区的牌被选中时也可用（删除摸错的牌）
+    const backspaceable = pickable || (S.phase === 'pending' && S.meldMode === null && S.selectedDraw);
+    const bsKey = dom.picker.querySelector('.hc-backspace-key');
+    if (bsKey) {
+      bsKey.style.pointerEvents = backspaceable ? '' : 'none';
+      bsKey.style.opacity = backspaceable ? '' : '.35';
+    }
   }
 
   // ─── 输入路由 ─────────────────────────────────────────────────
@@ -172,11 +175,6 @@
       S.drawTile = t;
       S.phase = 'pending';
       render();
-    } else if (S.phase === 'pending' && S.meldMode === null) {
-      // 摸错了可以直接重新点选覆盖
-      S.drawTile = t;
-      S.selectedDraw = false;
-      render();
     }
   }
 
@@ -184,8 +182,10 @@
     if (S.phase === 'setup') {
       S.inputBuffer.pop();
       render();
-    } else if (S.phase === 'pending' && S.meldMode === null) {
+    } else if (S.phase === 'pending' && S.meldMode === null && S.selectedDraw) {
+      // 摸牌区的牌需先选中，再退格删除，避免误触
       S.drawTile = null;
+      S.selectedDraw = false;
       S.phase = 'draw';
       render();
     }
@@ -397,7 +397,7 @@
       S.insertSide = 'left';
       showMsg(`打出：`, [t], `左起第 ${leftPos} 张 / 右起第 ${rightPos} 张`);
       render();
-      openInsertDialog();
+      openInsertDialog(t, leftPos, rightPos);
     } else {
       S.phase = 'draw';
       showMsg(`打出：`, [t], `左起第 ${leftPos} 张 / 右起第 ${rightPos} 张`);
@@ -406,7 +406,11 @@
   }
 
   // ─── 插入弹窗 ─────────────────────────────────────────────────
-  function openInsertDialog() {
+  function openInsertDialog(discardedTile, leftPos, rightPos) {
+    dom.insertDiscardInfo.innerHTML = '';
+    dom.insertDiscardInfo.appendChild(
+      buildMsgLine(`打出：`, [discardedTile], `左起第 ${leftPos} 张 / 右起第 ${rightPos} 张`)
+    );
     const m = S.standing.length; // 当前立牌数，插入后变为 m+1
     const sel = dom.insertPos;
     sel.innerHTML = '';
@@ -441,26 +445,27 @@
   }
 
   // ─── 消息区 ───────────────────────────────────────────────────
+  // 构建一行消息（文字前缀 + 牌图 + 强调后缀），供 #on-msg 和插入弹窗共用
+  function buildMsgLine(prefix, tiles, suffix) {
+    const line = el('div', 'on-msg-line');
+    if (prefix) line.appendChild(document.createTextNode(prefix));
+    if (tiles && tiles.length) {
+      const wrap = el('span', 'on-msg-tiles');
+      tiles.forEach(t => wrap.appendChild(makeTileEl(t.code, t.isRed, 'md')));
+      line.appendChild(wrap);
+    }
+    if (suffix) {
+      const s = el('strong'); s.textContent = suffix; s.style.color = 'var(--accent)';
+      line.appendChild(s);
+    }
+    return line;
+  }
+
   // append=false（默认）清空后显示一行；append=true 在已有内容后另起一行追加
   // （用于「打出左起X/右起Y」之后紧跟着的「已插入左起Z」提示，避免后者把前者覆盖掉）
   function showMsg(prefix, tiles, suffix, append) {
     if (!append) dom.msg.innerHTML = '';
-    else if (dom.msg.childNodes.length) dom.msg.appendChild(document.createElement('br'));
-    if (prefix) dom.msg.appendChild(document.createTextNode(prefix));
-    if (tiles && tiles.length) {
-      const wrap = el('span', 'on-msg-tiles');
-      tiles.forEach(t => {
-        wrap.appendChild(makeTileEl(t.code, t.isRed, 'md'));
-        const lbl = el('span'); lbl.textContent = tileLabel(t.code, t.isRed);
-        lbl.style.cssText = 'font-size:.78rem;margin-right:4px';
-        wrap.appendChild(lbl);
-      });
-      dom.msg.appendChild(wrap);
-    }
-    if (suffix) {
-      const s = el('strong'); s.textContent = suffix; s.style.color = 'var(--accent)';
-      dom.msg.appendChild(s);
-    }
+    dom.msg.appendChild(buildMsgLine(prefix, tiles, suffix));
   }
 
   // ─── 渲染：立牌区 ─────────────────────────────────────────────
@@ -500,7 +505,7 @@
   function renderDraw() {
     dom.drawArea.innerHTML = '';
     if (!S.drawTile) {
-      dom.drawArea.appendChild(makeEmptySlot('md'));
+      dom.drawArea.appendChild(makeTileRaw('X.svg', 'md'));
       return;
     }
     const tEl = makeTileEl(S.drawTile.code, S.drawTile.isRed, 'md');
@@ -602,11 +607,12 @@
     dom.discardBtn    = document.getElementById('on-discard-btn');
     dom.confirmBtn    = document.getElementById('on-confirm-btn');
 
-    dom.insertModal    = document.getElementById('on-insert-modal');
-    dom.insertLeftBtn  = document.getElementById('on-insert-left');
-    dom.insertRightBtn = document.getElementById('on-insert-right');
-    dom.insertPos      = document.getElementById('on-insert-pos');
-    dom.insertConfirm  = document.getElementById('on-insert-confirm');
+    dom.insertModal       = document.getElementById('on-insert-modal');
+    dom.insertDiscardInfo = document.getElementById('on-insert-discard-info');
+    dom.insertLeftBtn     = document.getElementById('on-insert-left');
+    dom.insertRightBtn    = document.getElementById('on-insert-right');
+    dom.insertPos         = document.getElementById('on-insert-pos');
+    dom.insertConfirm     = document.getElementById('on-insert-confirm');
 
     dom.helpBtn   = document.getElementById('on-help-btn');
     dom.helpModal = document.getElementById('on-help-modal');

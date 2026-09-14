@@ -17,8 +17,11 @@
       box-shadow: 0 0 0 1.5px var(--bg); white-space: nowrap;
     }
     .on-meld-hint { font-size: .78rem; color: var(--accent); font-weight: 600; margin: 2px 0 6px; min-height: 1.1em; }
-    #on-msg { min-height: 20px; font-size: .85rem; line-height: 1.6; padding: 8px 2px; color: var(--text); }
-    #on-msg .on-msg-tiles { display: inline-flex; gap: 2px; vertical-align: middle; margin: 0 3px; }
+    #on-msg { min-height: 20px; font-size: .85rem; padding: 8px 2px; color: var(--text); }
+    .on-msg-line { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+    .on-msg-line:last-child { margin-bottom: 0; }
+    .on-msg-tiles { display: inline-flex; gap: 2px; }
+    #on-insert-discard-info { margin-bottom: 10px; }
     .on-insert-row { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
     .on-side-btn {
       padding: 7px 14px; border-radius: 6px; border: 1.5px solid var(--border);
@@ -84,6 +87,7 @@
 
   <div id="on-insert-modal" class="hc-modal-overlay hidden">
     <div class="hc-modal">
+      <div id="on-insert-discard-info"></div>
       <p class="hc-modal-msg">新摸的牌插入到立牌区的哪个位置？</p>
       <div class="on-insert-row">
         <button id="on-insert-left" class="on-side-btn active">左起</button>
@@ -113,6 +117,6 @@
     </div>
   </div>
 
-  <script src="online.js?v=3"></script>
+  <script src="online.js?v=4"></script>
 </body>
 </html>
