@@ -432,16 +432,20 @@
     for (const t of S.standing) if (t.pos >= leftPos) t.pos += 1;
     S.standing.push({ code: S.drawTile.code, isRed: S.drawTile.isRed, pos: leftPos });
     sortStandingDisplay();
+    const insertedTile = { code: S.drawTile.code, isRed: S.drawTile.isRed };
     S.drawTile = null;
     S.phase = 'draw';
     closeInsertDialog();
-    showMsg(`已插入立牌区左起第 ${leftPos} 张。`);
+    showMsg(`摸的`, [insertedTile], `已插入左起第 ${leftPos} 张`, /* append */ true);
     render();
   }
 
   // ─── 消息区 ───────────────────────────────────────────────────
-  function showMsg(prefix, tiles, suffix) {
-    dom.msg.innerHTML = '';
+  // append=false（默认）清空后显示一行；append=true 在已有内容后另起一行追加
+  // （用于「打出左起X/右起Y」之后紧跟着的「已插入左起Z」提示，避免后者把前者覆盖掉）
+  function showMsg(prefix, tiles, suffix, append) {
+    if (!append) dom.msg.innerHTML = '';
+    else if (dom.msg.childNodes.length) dom.msg.appendChild(document.createElement('br'));
     if (prefix) dom.msg.appendChild(document.createTextNode(prefix));
     if (tiles && tiles.length) {
       const wrap = el('span', 'on-msg-tiles');
