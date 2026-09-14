@@ -253,6 +253,7 @@
     updateModeButtons();
     updatePickerCounts();
     updateKongWinCheckbox();
+    updateTianDiRenHeCheckboxes();
     updateDoraDropdown();
     updateActionButtons();
     refreshSelectionButtons();
@@ -336,6 +337,17 @@
     } else if (!hasOpenMeld()) {
       cbIppatsu.disabled = false;
     }
+  }
+
+  // 天和/地和/人和：只要有任意副露（含暗杠）就必然不成立，因为已经产生了额外的摸/打/鸣牌动作
+  function updateTianDiRenHeCheckboxes() {
+    const hasAnyMeld = S.melds.length > 0;
+    ['hc-fan-tian_he', 'hc-fan-di_he', 'hc-fan-ren_he'].forEach(id => {
+      const cb = document.getElementById(id);
+      cb.disabled = hasAnyMeld;
+      if (hasAnyMeld && cb.checked) cb.checked = false;
+    });
+    if (hasAnyMeld) { S.fan_tian_he = false; S.fan_di_he = false; S.fan_ren_he = false; }
   }
 
   // 点击已有牌 → 该槽清空等待重输；点击空槽 → 取消并还原
@@ -757,7 +769,10 @@
     }
 
     // 村规2：天和 / 地和 / 人和（手动勾选，排斥门前清/门清自摸/非门清自摸）
-    const specialFan = S.fan_tian_he ? '天和' : S.fan_di_he ? '地和' : S.fan_ren_he ? '人和' : null;
+    // 只要存在任何副露（含暗杠），说明起手后已有额外的摸/打/鸣牌动作，天地人和必然不成立
+    const specialFan = S.melds.length === 0
+      ? (S.fan_tian_he ? '天和' : S.fan_di_he ? '地和' : S.fan_ren_he ? '人和' : null)
+      : null;
     if (specialFan) {
       const excluded = new Set(['门前清', '门清自摸', '非门清自摸', '天和', '地和', '人和']);
       const kept = fans.filter(f => !excluded.has(f.name));
@@ -1485,7 +1500,8 @@
     document.getElementById('hand-calc-btn').addEventListener('click', open);
     document.getElementById('hc-back').addEventListener('click', close);
     document.getElementById('hc-kb-toggle').addEventListener('click', () => {
-      const bottom = document.querySelector('.hc-bottom');
+      // 限定在 #hand-calc-page 内查找，避免页面中还有其他 .hc-bottom（如 online.html 的理牌工具自身）时选错元素
+      const bottom = document.getElementById('hand-calc-page').querySelector('.hc-bottom');
       const btn    = document.getElementById('hc-kb-toggle');
       const hidden = bottom.classList.toggle('hidden');
       btn.classList.toggle('kb-hidden', hidden);
