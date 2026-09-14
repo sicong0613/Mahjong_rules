@@ -464,11 +464,17 @@
     dom.standingArea.innerHTML = '';
     if (S.phase === 'setup') {
       dom.setupCount.textContent = `${S.inputBuffer.length} 张（需 13 或 14 张）`;
-      S.inputBuffer.forEach((t, i) => {
-        const tEl = makeTileEl(t.code, t.isRed, 'md');
-        tEl.addEventListener('click', () => onStandingClick(i));
-        dom.standingArea.appendChild(tEl);
-      });
+      const slots = Math.max(13, S.inputBuffer.length);
+      for (let i = 0; i < slots; i++) {
+        const t = S.inputBuffer[i];
+        if (t) {
+          const tEl = makeTileEl(t.code, t.isRed, 'md');
+          tEl.addEventListener('click', () => onStandingClick(i));
+          dom.standingArea.appendChild(tEl);
+        } else {
+          dom.standingArea.appendChild(makeTileRaw('X.svg', 'md'));
+        }
+      }
       return;
     }
     dom.setupCount.textContent = `${S.standing.length} 张`;
@@ -555,6 +561,7 @@
 
   // ─── 总渲染入口 ─────────────────────────────────────────────────
   function render() {
+    if (S.phase !== 'setup') sortStandingDisplay(); // 兜底：任何状态变动后渲染前必定重新理牌
     renderStanding();
     renderDraw();
     renderMelds();
