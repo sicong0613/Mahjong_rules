@@ -155,8 +155,8 @@
       t.style.pointerEvents = pickable ? '' : 'none';
       t.style.opacity = pickable ? '' : '.35';
     });
-    // 退格键：起手输入阶段随时可用；摸牌区的牌被选中时也可用（删除摸错的牌）
-    const backspaceable = pickable || (S.phase === 'pending' && S.meldMode === null && S.selectedDraw);
+    // 退格键：起手输入阶段随时可用；摸牌区有牌待处理时也可用（撤销摸错的牌，无需先选中）
+    const backspaceable = pickable || (S.phase === 'pending' && S.meldMode === null);
     const bsKey = dom.picker.querySelector('.hc-backspace-key');
     if (bsKey) {
       bsKey.style.pointerEvents = backspaceable ? '' : 'none';
@@ -182,8 +182,8 @@
     if (S.phase === 'setup') {
       S.inputBuffer.pop();
       render();
-    } else if (S.phase === 'pending' && S.meldMode === null && S.selectedDraw) {
-      // 摸牌区的牌需先选中，再退格删除，避免误触
+    } else if (S.phase === 'pending' && S.meldMode === null) {
+      // 摸错了可直接退格撤销，无需先选中
       S.drawTile = null;
       S.selectedDraw = false;
       S.phase = 'draw';
@@ -348,7 +348,9 @@
 
     const meldTiles = [...removed, { ...S.drawTile }].sort((a, b) => (a.code & 0xF) - (b.code & 0xF));
     const meldType = mode === 'chi' ? 'chow' : mode === 'pon' ? 'pung' : 'kong';
-    S.melds.push({ type: meldType, concealed: mode === 'angang', tiles: meldTiles });
+    // 吃的 tile 取中间那张（同万/索/饼的三连），碰/杠取任意一张（同码）——与 calc-ui.js 约定一致
+    const meldTile = meldType === 'chow' ? meldTiles[1].code : meldTiles[0].code;
+    S.melds.push({ type: meldType, tile: meldTile, concealed: mode === 'angang', tiles: meldTiles });
 
     const isKong = mode === 'minggang' || mode === 'angang';
     finishMeldSuccess(meldModeLabel(mode), meldTiles, isKong);
@@ -566,6 +568,27 @@
     if (S.meldMode === 'gangUpgrade') confirmEnabled = true;
     else if (S.meldMode) confirmEnabled = S.selectedStanding.size === requiredCountFor(S.meldMode);
     dom.confirmBtn.disabled = !confirmEnabled;
+    // 和牌：与吃/碰/明杠/暗杠同样的前提——摸牌区有待处理的牌，且不在鸣牌选牌中
+    dom.winBtn.disabled = !(S.phase === 'pending' && !!S.drawTile && S.meldMode === null);
+  }
+
+  // ─── 和牌：把当前立牌/摸到的牌/副露交给计番器计算 ────────────────
+  function doWin() {
+    if (dom.winBtn.disabled) return;
+    const codeOf = t => ({ code: t.code, isRed: !!t.isRed });
+    const hand = {
+      standing: S.standing.map(codeOf),
+      winTile: codeOf(S.drawTile),
+      melds: S.melds.map(m => ({
+        type: m.type, tile: m.tile, concealed: !!m.concealed,
+        tiles: m.tiles.map(codeOf),
+      })),
+    };
+    if (typeof window.HandCalcBridge === 'undefined') {
+      showMsg('计番器未加载，请刷新页面后重试');
+      return;
+    }
+    window.HandCalcBridge.openWithHand(hand);
   }
 
   // ─── 总渲染入口 ─────────────────────────────────────────────────
@@ -605,6 +628,7 @@
     dom.startBtn      = document.getElementById('on-start-btn');
     dom.sortBtn       = document.getElementById('on-sort-btn');
     dom.discardBtn    = document.getElementById('on-discard-btn');
+    dom.winBtn        = document.getElementById('on-win-btn');
     dom.confirmBtn    = document.getElementById('on-confirm-btn');
 
     dom.insertModal       = document.getElementById('on-insert-modal');
@@ -624,6 +648,7 @@
     dom.startBtn.addEventListener('click', doStart);
     dom.sortBtn.addEventListener('click', () => { sortStandingDisplay(); render(); });
     dom.discardBtn.addEventListener('click', doDiscard);
+    dom.winBtn.addEventListener('click', doWin);
     dom.confirmBtn.addEventListener('click', () => {
       if (S.meldMode) confirmMeld();
     });

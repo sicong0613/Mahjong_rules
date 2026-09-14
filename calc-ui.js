@@ -1348,24 +1348,25 @@
   }
 
   // ─── 开/关页面 ─────────────────────────────────────────────────
+  // 首次打开时的控件默认值（供 open() 与外部桥接 HandCalcBridge 共用）
+  function initSettingsDefaults() {
+    resetState();
+    ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong','hc-qiang-gang',
+     'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-liuju-manguan','hc-dora','hc-ippatsu'].forEach(id => {
+      const el = document.getElementById(id); el.checked = false; el.disabled = false;
+    });
+    const riichiTypeSel = document.getElementById('hc-riichi-type');
+    riichiTypeSel.value = 'riichi'; riichiTypeSel.disabled = true;
+    const doraCountSel = document.getElementById('hc-dora-count');
+    doraCountSel.value = '1'; doraCountSel.disabled = true;
+    document.getElementById('hc-ippatsu').disabled = true;
+    document.getElementById('hc-flowers').value   = 0;
+    document.getElementById('hc-prevalent').value = '';
+    document.getElementById('hc-seat').value      = '';
+    document.getElementById('hc-seat').disabled   = false;
+  }
   function open() {
-    if (!S) {
-      // 首次打开：初始化状态和控件
-      resetState();
-      ['hc-self-drawn','hc-dealer-win','hc-last-tile','hc-kong-win','hc-wall-last','hc-river-last','hc-gang-kai-chong','hc-qiang-gang',
-       'hc-riichi','hc-fan-tian_he','hc-fan-di_he','hc-fan-ren_he','hc-liuju-manguan','hc-dora','hc-ippatsu'].forEach(id => {
-        const el = document.getElementById(id); el.checked = false; el.disabled = false;
-      });
-      const riichiTypeSel = document.getElementById('hc-riichi-type');
-      riichiTypeSel.value = 'riichi'; riichiTypeSel.disabled = true;
-      const doraCountSel = document.getElementById('hc-dora-count');
-      doraCountSel.value = '1'; doraCountSel.disabled = true;
-      document.getElementById('hc-ippatsu').disabled = true;
-      document.getElementById('hc-flowers').value   = 0;
-      document.getElementById('hc-prevalent').value = '';
-      document.getElementById('hc-seat').value      = '';
-      document.getElementById('hc-seat').disabled   = false;
-    }
+    if (!S) initSettingsDefaults(); // 首次打开：初始化状态和控件
     render();
     document.getElementById('hand-calc-page').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -1374,6 +1375,28 @@
     document.getElementById('hand-calc-page').classList.add('hidden');
     document.body.style.overflow = '';
   }
+
+  // ─── 外部桥接：供 online.js 等外部脚本传入当前手牌并唤起计算器 ──
+  // hand: { standing:[{code,isRed}], winTile:{code,isRed}|null, melds:[{type,tile,tiles,concealed}] }
+  window.HandCalcBridge = {
+    openWithHand(hand) {
+      if (!S) initSettingsDefaults();
+      S.standing = (hand.standing || []).map(t => ({ code: t.code, isRed: !!t.isRed }));
+      S.winTile  = hand.winTile ? { code: hand.winTile.code, isRed: !!hand.winTile.isRed } : null;
+      S.melds    = (hand.melds || []).map(m => ({
+        type: m.type, tile: m.tile,
+        tiles: m.tiles.map(t => ({ code: t.code, isRed: !!t.isRed })),
+        concealed: !!m.concealed, promoted: false,
+      }));
+      S.mode = 'standing'; S.buffer = []; S.replacing = null;
+      clearSelection();
+      _lastResult = null; _lastHand = null; _calcSig = null; _uploaded = false;
+      dom.result.innerHTML = ''; dom.result.classList.add('hidden');
+      render();
+      document.getElementById('hand-calc-page').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    },
+  };
 
   // ─── 番种↔条件联动接口 ────────────────────────────────────────
   //
